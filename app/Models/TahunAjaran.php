@@ -20,4 +20,15 @@ class TahunAjaran extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    // Accessor for backward compatibility
+    public function getTahunAjaranAttribute()
+    {
+        return $this->nama;
+    }
+
+    public function kartuPembayaran()
+    {
+        return $this->hasMany(KartuPembayaran::class);
+    }
 }

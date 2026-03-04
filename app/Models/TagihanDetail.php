@@ -10,6 +10,9 @@ class TagihanDetail extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const STATUS_BELUM_BAYAR = 'belum_bayar';
+    public const STATUS_LUNAS = 'lunas';
+
     protected $table = 'tagihan_detail';
 
     protected $fillable = [
@@ -17,20 +20,20 @@ class TagihanDetail extends Model
         'jenis_tagihan_id',
         'bulan',
         'nominal',
-        'status',
+        'status'
     ];
 
     protected $casts = [
-        'nominal' => 'float',
+        'nominal' => 'decimal:2'
     ];
 
     public function tagihan()
     {
-        return $this->belongsTo(Tagihan::class, 'tagihan_id');
+        return $this->belongsTo(Tagihan::class);
     }
 
     public function jenisTagihan()
     {
-        return $this->belongsTo(JenisTagihan::class, 'jenis_tagihan_id');
+        return $this->belongsTo(JenisTagihan::class);
     }
 }

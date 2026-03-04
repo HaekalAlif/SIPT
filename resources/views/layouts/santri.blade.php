@@ -27,7 +27,7 @@
                 <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
                     <i class="fa fa-user text-green-700"></i>
                 </div>
-                <span class="text-white font-semibold">{{ Auth::check() ? Auth::user()->name : 'USER' }}</span>
+                <span class="text-white font-semibold">{{ Auth::check() ? Auth::user()->nama_santri : 'USER' }}</span>
             </div>
         </header>
 

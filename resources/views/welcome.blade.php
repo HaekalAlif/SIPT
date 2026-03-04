@@ -17,7 +17,7 @@
                     Kec. Sekampung, Kabupaten Lampung Timur, Lampung 34382
                 </p>
             </div>
-            <div class="flex gap-4">
+            <div class="flex gap-7">
                 <a href="#" class="text-white text-2xl"><i class="fab fa-tiktok"></i></a>
                 <a href="#" class="text-white text-2xl"><i class="fab fa-facebook"></i></a>
                 <a href="#" class="text-white text-2xl"><i class="fab fa-instagram"></i></a>
@@ -50,7 +50,7 @@
         </div>
         <!-- Hero Section -->
         <div class="relative flex-1 flex items-center justify-start overflow-hidden"
-            style="background: url('/images/bg-home.jpg') center center / cover no-repeat;">
+            style="background: url('/images/home.png') center center / cover no-repeat;">
             <div class="absolute inset-0 bg-black bg-opacity-40"></div>
             <div class="relative z-10 px-8 md:px-24 py-16">
                 <h1 class="text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">

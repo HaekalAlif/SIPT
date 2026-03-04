@@ -96,9 +96,12 @@
                             class="w-full bg-green-700 text-white font-bold py-2 rounded hover:bg-green-800 transition">
                             Sign in
                         </button>
-                        <div class="mt-4 text-center font-semibold text-[#846D6D]">
-                            Belum Memiliki Akun Login?
-                        </div>
+                        <a href="{{ route('register') }}">
+                            <div class="mt-4 text-center font-semibold text-[#846D6D]">
+                                Belum Memiliki Akun Login?
+                            </div>
+                        </a>
+
                     </form>
                 </div>
             </div>

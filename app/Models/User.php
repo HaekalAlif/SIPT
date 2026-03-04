@@ -23,6 +23,7 @@ class User extends Authenticatable
         'no_telp',
         'tingkatan',
         'kelas',
+        'tahun_ajaran_masuk_id',
         'tempat_lahir',
         'tanggal_lahir',
         'jenis_kelamin',
@@ -40,7 +41,16 @@ class User extends Authenticatable
         'tanggal_lahir' => 'date',
     ];
 
-    // Contoh konstanta enum untuk role
+    public function kartuPembayaran()
+    {
+        return $this->hasMany(KartuPembayaran::class);
+    }
+
+    public function tahunAjaranMasuk()
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_masuk_id');
+    }
+        
     public const ROLE_ADMIN = 'admin';
     public const ROLE_BENDAHARA = 'bendahara';
     public const ROLE_SANTRI = 'santri';

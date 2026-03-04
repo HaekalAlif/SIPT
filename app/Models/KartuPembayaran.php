@@ -4,18 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class KartuPembayaran extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'kartu_pembayaran';
-
+    
     protected $fillable = [
         'user_id',
         'tahun_ajaran_id',
-        'nomor_kartu',
+        'nomor_kartu'
     ];
 
     public function user()
@@ -25,6 +24,11 @@ class KartuPembayaran extends Model
 
     public function tahunAjaran()
     {
-        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_id');
+        return $this->belongsTo(TahunAjaran::class);
+    }
+
+    public function tagihan()
+    {
+        return $this->hasMany(Tagihan::class, 'kartu_id');
     }
 }

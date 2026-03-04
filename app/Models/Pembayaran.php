@@ -17,9 +17,11 @@ class Pembayaran extends Model
         'tanggal_bayar',
         'jumlah_bayar',
         'bukti_pembayaran',
+        'catatan',
         'status',
         'verified_by',
         'verified_at',
+        'catatan_verifikator',
     ];
 
     protected $casts = [
@@ -37,4 +39,8 @@ class Pembayaran extends Model
     {
         return $this->belongsTo(User::class, 'verified_by');
     }
+
+    public const STATUS_MENUNGGU_VERIFIKASI = 'menunggu_verifikasi';
+    public const STATUS_DITERIMA = 'diterima';
+    public const STATUS_DITOLAK = 'ditolak';
 }

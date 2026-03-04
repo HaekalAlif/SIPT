@@ -4,15 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class KategoriTagihan extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'kategori_tagihan';
-
+    
     protected $fillable = [
-        'nama',
+        'nama'
     ];
+
+    public function jenisTagihan()
+    {
+        return $this->hasMany(JenisTagihan::class, 'kategori_id');
+    }
 }
