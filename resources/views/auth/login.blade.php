@@ -35,7 +35,7 @@
         <div class="flex flex-1 h-full">
             <!-- Left Image 40% -->
             <div class="w-[40%] h-full hidden md:block">
-                <img src="/images/image.png" alt="Pondok Pesantren" class="object-cover w-full h-full" />
+                <img src="/images/login.png" alt="Pondok Pesantren" class="object-cover w-full h-full" />
             </div>
             <!-- Right Form 60% -->
             <div class="w-full md:w-[60%] flex items-center justify-center h-full">

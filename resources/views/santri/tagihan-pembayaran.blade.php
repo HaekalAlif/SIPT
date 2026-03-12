@@ -2,39 +2,81 @@
 @extends('layouts.santri')
 
 @section('content')
-    <div class="space-y-6">
-        <div class="bg-green-700 text-white p-4 rounded-lg flex justify-between items-center">
-            <div>
-                <h1 class="text-xl font-bold">Tagihan Pembayaran</h1>
-                <p class="text-green-100 mt-1">
-                    @if ($selectedTagihan)
-                        Detail tagihan #{{ $selectedTagihan->id }}
-                    @else
-                        Daftar semua tagihan pembayaran Anda
-                    @endif
-                </p>
+    <div class="space-y-4">
+
+        {{-- ─── NOMOR REKENING TUJUAN PEMBAYARAN ─── --}}
+        <div class="bg-white rounded-lg shadow border border-gray-100">
+            <h2 class="text-base font-bold text-gray-800 px-5 pt-4 pb-2 border-b-2 border-green-600">
+                Nomor Rekening Tujuan Pembayaran
+            </h2>
+            <div class="flex items-center justify-between px-5 py-4">
+                <div class="space-y-1.5 text-sm text-gray-700">
+                    <p>🏦 &nbsp;<strong>Bank BRI</strong></p>
+                    <p>🗒️ &nbsp;Nomor Rekening: <strong>1234-5678-9012-3456</strong></p>
+                    <p>👤 &nbsp;Atas Nama: <strong>Siti Mutoharoh, S.E</strong></p>
+                </div>
+                <img src="/images/bri.png" alt="Bank BRI"
+                    class="h-20 object-contain rounded-lg">
+            </div>
+        </div>
+
+        {{-- ─── TAGIHAN PEMBAYARAN HEADER ─── --}}
+        <div class="bg-green-700 text-white p-4 rounded-lg">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-xl font-bold">Tagihan Pembayaran</h1>
+                    <p class="text-green-100 mt-1">
+                        @if ($selectedTagihan)
+                            Detail tagihan #{{ $selectedTagihan->id }}
+                        @elseif ($filterKategori)
+                            Daftar tagihan kategori: <strong class="capitalize">{{ $filterKategori }}</strong>
+                        @else
+                            Daftar semua tagihan pembayaran Anda
+                        @endif
+                    </p>
+                </div>
+
+                <!-- Tahun Ajaran Selector -->
+                @if ($tahunAjaranList->count() > 1)
+                    <div class="bg-green-600 rounded-lg p-3">
+                        <form action="{{ route('santri.tagihan-pembayaran') }}" method="GET" class="flex items-center gap-3">
+                            @if ($filterKategori)
+                                <input type="hidden" name="kategori" value="{{ $filterKategori }}">
+                            @endif
+                            <label for="tahun_ajaran" class="text-green-100 text-sm font-semibold">Tahun Ajaran:</label>
+                            <select name="tahun_ajaran" id="tahun_ajaran" onchange="this.form.submit()"
+                                class="bg-white text-gray-800 px-3 py-1 rounded border-0 focus:ring-2 focus:ring-green-300">
+                                @foreach ($tahunAjaranList as $ta)
+                                    <option value="{{ $ta->id }}"
+                                        {{ $selectedTahunAjaran->id == $ta->id ? 'selected' : '' }}>
+                                        {{ $ta->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    </div>
+                @endif
             </div>
 
-            <!-- Tahun Ajaran Selector -->
-            @if ($tahunAjaranList->count() > 1)
-                <div class="bg-green-600 rounded-lg p-3">
-                    <form action="{{ route('santri.tagihan-pembayaran') }}" method="GET" class="flex items-center gap-3">
-                        @if (request('id'))
-                            <input type="hidden" name="id" value="{{ request('id') }}">
-                        @endif
-                        <label for="tahun_ajaran" class="text-green-100 text-sm font-semibold">Tahun Ajaran:</label>
-                        <select name="tahun_ajaran" id="tahun_ajaran" onchange="this.form.submit()"
-                            class="bg-white text-gray-800 px-3 py-1 rounded border-0 focus:ring-2 focus:ring-green-300">
-                            @foreach ($tahunAjaranList as $ta)
-                                <option value="{{ $ta->id }}"
-                                    {{ $selectedTahunAjaran->id == $ta->id ? 'selected' : '' }}>
-                                    {{ $ta->nama }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </form>
-                </div>
-            @endif
+            <!-- Category Filter Tabs -->
+            <div class="flex gap-2 mt-4 flex-wrap">
+                <a href="{{ route('santri.tagihan-pembayaran', ['tahun_ajaran' => $selectedTahunAjaran->id]) }}"
+                    class="px-4 py-1.5 rounded-full text-sm font-semibold transition {{ !$filterKategori ? 'bg-white text-green-700' : 'bg-green-600 text-green-100 hover:bg-green-500' }}">
+                    Semua
+                </a>
+                <a href="{{ route('santri.tagihan-pembayaran', ['kategori' => 'registrasi', 'tahun_ajaran' => $selectedTahunAjaran->id]) }}"
+                    class="px-4 py-1.5 rounded-full text-sm font-semibold transition {{ $filterKategori == 'registrasi' ? 'bg-white text-green-700' : 'bg-green-600 text-green-100 hover:bg-green-500' }}">
+                    Registrasi
+                </a>
+                <a href="{{ route('santri.tagihan-pembayaran', ['kategori' => 'syariah', 'tahun_ajaran' => $selectedTahunAjaran->id]) }}"
+                    class="px-4 py-1.5 rounded-full text-sm font-semibold transition {{ $filterKategori == 'syariah' ? 'bg-white text-green-700' : 'bg-green-600 text-green-100 hover:bg-green-500' }}">
+                    Syariah
+                </a>
+                <a href="{{ route('santri.tagihan-pembayaran', ['kategori' => 'lainnya', 'tahun_ajaran' => $selectedTahunAjaran->id]) }}"
+                    class="px-4 py-1.5 rounded-full text-sm font-semibold transition {{ $filterKategori == 'lainnya' ? 'bg-white text-green-700' : 'bg-green-600 text-green-100 hover:bg-green-500' }}">
+                    Lainnya
+                </a>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -43,54 +85,90 @@
                 <div class="bg-white rounded-lg shadow">
                     <div class="border-b border-gray-200 p-4">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-semibold text-gray-800">Daftar Tagihan</h3>
-                            <a href="{{ route('santri.buat-tagihan') }}"
-                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition">
-                                <i class="fa fa-plus mr-1"></i> Buat Baru
-                            </a>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800">Daftar Tagihan</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Pilih tagihan untuk melihat detail atau bayar</p>
+                            </div>
+                            @if ($filterKategori)
+                                <a href="{{ route('santri.buat-tagihan', ['kategori' => $filterKategori]) }}"
+                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition flex items-center gap-1">
+                                    <i class="fa fa-plus text-xs"></i> Buat
+                                </a>
+                            @else
+                                <a href="{{ route('santri.buat-tagihan') }}"
+                                    class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition flex items-center gap-1">
+                                    <i class="fa fa-plus text-xs"></i> Buat
+                                </a>
+                            @endif
                         </div>
                     </div>
                     <div class="p-4">
                         @if ($tagihans->count() > 0)
                             <div class="space-y-3">
                                 @foreach ($tagihans as $tagihan)
-                                    <a href="{{ route('santri.tagihan-pembayaran', ['id' => $tagihan->id, 'tahun_ajaran' => $selectedTahunAjaran->id]) }}"
-                                        class="block p-3 rounded-lg border transition {{ $selectedTagihan && $selectedTagihan->id == $tagihan->id ? 'bg-green-50 border-green-200' : 'hover:bg-gray-50 border-gray-200' }}">
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-1">
-                                                <div class="font-semibold text-gray-800">#{{ $tagihan->id }}</div>
-                                                <div class="text-sm text-gray-600">
-                                                    {{ $tagihan->created_at->format('d M Y') }}
+                                    @if ($tagihan->status == 'lunas')
+                                        <div class="block p-3 rounded-lg border border-gray-300 bg-gray-100 opacity-75">
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex-1 flex items-center gap-3">
+                                                    <div
+                                                        class="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                                        <i class="fa fa-check text-xs"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-semibold text-gray-600">#{{ $tagihan->id }}</div>
+                                                        <div class="text-sm text-gray-500">
+                                                            {{ $tagihan->created_at->format('d M Y') }}
+                                                        </div>
+                                                        <div class="text-sm font-semibold text-gray-600">
+                                                            Rp{{ number_format($tagihan->total, 0, ',', '.') }}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="text-sm font-semibold text-green-600">
-                                                    Rp{{ number_format($tagihan->total, 0, ',', '.') }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                @if ($tagihan->status == 'belum_bayar')
-                                                    <span
-                                                        class="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">Belum
-                                                        Bayar</span>
-                                                @elseif($tagihan->status == 'menunggu_verifikasi')
-                                                    <span
-                                                        class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold">Menunggu</span>
-                                                @elseif($tagihan->status == 'lunas')
+                                                <div>
                                                     <span
                                                         class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">Lunas</span>
-                                                @endif
+                                                </div>
                                             </div>
                                         </div>
-                                    </a>
+                                    @else
+                                        <div
+                                            class="p-3 rounded-lg border {{ $selectedTagihan && $selectedTagihan->id == $tagihan->id ? 'bg-green-50 border-green-300' : 'border-gray-200' }}">
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex-1">
+                                                    <div class="font-semibold text-gray-800">#{{ $tagihan->id }}</div>
+                                                    <div class="text-sm text-gray-600">
+                                                        {{ $tagihan->created_at->format('d M Y') }}
+                                                    </div>
+                                                    <div class="text-sm font-semibold text-green-600">
+                                                        Rp{{ number_format($tagihan->total, 0, ',', '.') }}
+                                                    </div>
+                                                    @if ($tagihan->status == 'belum_bayar')
+                                                        <span
+                                                            class="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">Belum
+                                                            Bayar</span>
+                                                    @elseif($tagihan->status == 'menunggu_verifikasi')
+                                                        <span
+                                                            class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold">Menunggu</span>
+                                                    @endif
+                                                </div>
+                                                <div class="flex flex-col gap-1 items-end">
+                                                    @if ($tagihan->status == 'belum_bayar')
+                                                        <a href="{{ route('santri.upload-pembayaran', $tagihan->id) }}"
+                                                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-semibold transition">Bayar</a>
+                                                    @endif
+                                                    <a href="{{ route('santri.tagihan-pembayaran', ['id' => $tagihan->id, 'tahun_ajaran' => $selectedTahunAjaran->id]) }}"
+                                                        class="text-blue-600 hover:underline text-xs">Detail</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endforeach
                             </div>
                         @else
                             <div class="text-center py-8">
-                                <i class="fa fa-file-invoice text-4xl text-gray-300 mb-4"></i>
-                                <p class="text-gray-500 mb-4">Belum ada tagihan untuk tahun ajaran ini</p>
-                                <a href="{{ route('santri.buat-tagihan') }}"
-                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition">
-                                    Buat Tagihan Pertama
-                                </a>
+                                <i class="fa fa-file-invoice text-4xl text-gray-300 mb-3"></i>
+                                <p class="text-gray-600 font-semibold mb-1">Belum ada tagihan</p>
+                                <p class="text-gray-500 text-sm">Tagihan akan muncul otomatis setelah diatur oleh admin.</p>
                             </div>
                         @endif
                     </div>
@@ -299,21 +377,17 @@
                             <div class="text-center">
                                 <i class="fa fa-hand-pointer text-4xl text-gray-300 mb-4"></i>
                                 <h3 class="text-lg font-semibold text-gray-700 mb-2">Pilih Tagihan</h3>
-                                <p class="text-gray-500">Klik pada salah satu tagihan di panel kiri untuk melihat detailnya
-                                </p>
+                                <p class="text-gray-500">Klik <strong>Detail</strong> pada tagihan di panel kiri, atau
+                                    langsung klik <strong>Bayar</strong> untuk melakukan pembayaran.</p>
                             </div>
                         @else
                             <div class="text-center">
                                 <i class="fa fa-file-invoice text-6xl text-gray-300 mb-6"></i>
                                 <h3 class="text-xl font-semibold text-gray-800 mb-3">Belum Ada Tagihan</h3>
-                                <p class="text-gray-600 mb-6 max-w-md mx-auto">
-                                    Anda belum memiliki tagihan untuk tahun ajaran ini. Mulai dengan membuat tagihan
-                                    pembayaran pertama Anda.
+                                <p class="text-gray-600 max-w-md mx-auto">
+                                    Tagihan Anda belum tersedia. Tagihan akan dibuatkan secara otomatis oleh administrator.
+                                    Silakan hubungi admin jika tagihan belum muncul.
                                 </p>
-                                <a href="{{ route('santri.buat-tagihan') }}"
-                                    class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition">
-                                    <i class="fa fa-plus mr-2"></i>Buat Tagihan Baru
-                                </a>
                             </div>
                         @endif
                     </div>

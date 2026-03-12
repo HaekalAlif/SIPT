@@ -29,6 +29,7 @@ class User extends Authenticatable
         'jenis_kelamin',
         'alamat',
         'tingkatan_ngaji',
+        'foto_profile',
     ];
 
     protected $hidden = [

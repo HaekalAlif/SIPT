@@ -5,13 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\KartuPembayaran;
 use App\Models\User;
 use App\Models\TahunAjaran;
+use App\Models\JenisTagihan;
+use App\Models\JenisTagihanDisabled;
+use App\Models\Tagihan;
+use App\Models\TagihanDetail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class KartuPembayaranController extends Controller
 {
     public function index(Request $request)
     {
-        $query = KartuPembayaran::with(['user', 'tahunAjaran']);
+        $query = KartuPembayaran::with(['user', 'tahunAjaran', 'tagihan.pembayaran']);
 
         // Filter berdasarkan tahun ajaran
         if ($request->filled('tahun_ajaran')) {
@@ -34,10 +39,10 @@ class KartuPembayaranController extends Controller
     public function show($id)
     {
         $kartuPembayaran = KartuPembayaran::with([
-            'user',
+            'user.tahunAjaranMasuk',
             'tahunAjaran',
             'tagihan.tagihanDetails.jenisTagihan.kategori',
-            'tagihan.pembayaran'
+            'tagihan.pembayaran',
         ])->findOrFail($id);
 
         return view('admin.kartu-pembayaran.show', compact('kartuPembayaran'));
@@ -48,20 +53,27 @@ class KartuPembayaranController extends Controller
         $santris = User::where('role', User::ROLE_SANTRI)
             ->where('status', User::STATUS_ACTIVE)
             ->get();
-        $tahunAjarans = TahunAjaran::all();
+        $tahunAjarans  = TahunAjaran::all();
+        $jenisTagihans = JenisTagihan::with('kategori')->get();
 
-        return view('admin.kartu-pembayaran.create', compact('santris', 'tahunAjarans'));
+        // Build nested map: { user_id: { ta_id: [disabled_jenis_ids] } }
+        $disabledMap = JenisTagihanDisabled::buildDisabledMap();
+
+        return view('admin.kartu-pembayaran.create', compact(
+            'santris', 'tahunAjarans', 'jenisTagihans', 'disabledMap'
+        ));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'tahun_ajaran_id' => 'required|exists:tahun_ajaran,id',
-            'nomor_kartu' => 'nullable|string|max:50|unique:kartu_pembayaran,nomor_kartu'
+            'user_id'              => 'required|exists:users,id',
+            'tahun_ajaran_id'      => 'required|exists:tahun_ajaran,id',
+            'nomor_kartu'          => 'nullable|string|max:50|unique:kartu_pembayaran,nomor_kartu',
+            'jenis_tagihan_ids'    => 'nullable|array',
+            'jenis_tagihan_ids.*'  => 'exists:jenis_tagihan,id',
         ]);
 
-        // Cek apakah santri sudah punya kartu untuk tahun ajaran ini
         $existingKartu = KartuPembayaran::where('user_id', $request->user_id)
             ->where('tahun_ajaran_id', $request->tahun_ajaran_id)
             ->first();
@@ -71,7 +83,6 @@ class KartuPembayaranController extends Controller
                 ->with('error', 'Santri sudah memiliki kartu pembayaran untuk tahun ajaran ini!');
         }
 
-        // Generate nomor kartu jika tidak diisi
         if (!$request->nomor_kartu) {
             $tahunAjaran = TahunAjaran::find($request->tahun_ajaran_id);
             $nomorKartu = 'KP-' . $tahunAjaran->nama . '-' . str_pad($request->user_id, 4, '0', STR_PAD_LEFT);
@@ -79,14 +90,69 @@ class KartuPembayaranController extends Controller
             $nomorKartu = $request->nomor_kartu;
         }
 
-        KartuPembayaran::create([
-            'user_id' => $request->user_id,
-            'tahun_ajaran_id' => $request->tahun_ajaran_id,
-            'nomor_kartu' => $nomorKartu
-        ]);
+        DB::beginTransaction();
+        try {
+            $kartu = KartuPembayaran::create([
+                'user_id'         => $request->user_id,
+                'tahun_ajaran_id' => $request->tahun_ajaran_id,
+                'nomor_kartu'     => $nomorKartu,
+            ]);
 
-        return redirect()->route('admin.kartu-pembayaran.index')
-            ->with('success', 'Kartu pembayaran berhasil dibuat!');
+            $jenisIds = $request->jenis_tagihan_ids ?? [];
+
+            // Filter out jenis tagihan yang dinonaktifkan admin untuk santri ini
+            $disabledByAdmin = JenisTagihanDisabled::getDisabledIds(
+                (int) $request->tahun_ajaran_id,
+                (int) $request->user_id
+            );
+            $jenisIds = array_filter($jenisIds, fn($id) => !in_array((int)$id, $disabledByAdmin));
+
+            $bulanList = ['Juli','Agustus','September','Oktober','November','Desember',
+                          'Januari','Februari','Maret','April','Mei','Juni'];
+
+            foreach ($jenisIds as $jenisId) {
+                $jenis = JenisTagihan::find($jenisId);
+                if (!$jenis) continue;
+
+                $tagihan = Tagihan::create([
+                    'kartu_id' => $kartu->id,
+                    'total'    => 0,
+                    'status'   => 'belum_bayar',
+                ]);
+
+                $total = 0;
+                if ($jenis->is_bulanan) {
+                    foreach ($bulanList as $bulan) {
+                        TagihanDetail::create([
+                            'tagihan_id'       => $tagihan->id,
+                            'jenis_tagihan_id' => $jenis->id,
+                            'bulan'            => $bulan,
+                            'nominal'          => $jenis->nominal,
+                            'status'           => TagihanDetail::STATUS_BELUM_BAYAR,
+                        ]);
+                        $total += $jenis->nominal;
+                    }
+                } else {
+                    TagihanDetail::create([
+                        'tagihan_id'       => $tagihan->id,
+                        'jenis_tagihan_id' => $jenis->id,
+                        'bulan'            => null,
+                        'nominal'          => $jenis->nominal,
+                        'status'           => TagihanDetail::STATUS_BELUM_BAYAR,
+                    ]);
+                    $total = $jenis->nominal;
+                }
+                $tagihan->update(['total' => $total]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withInput()->with('error', 'Gagal membuat kartu: ' . $e->getMessage());
+        }
+
+        return redirect()->route('admin.kartu-pembayaran.show', $kartu->id)
+            ->with('success', 'Kartu pembayaran dan tagihan berhasil dibuat!');
     }
 
     public function edit($id)

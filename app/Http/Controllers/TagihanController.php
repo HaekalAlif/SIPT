@@ -51,7 +51,7 @@ class TagihanController extends Controller
         return view('admin.tagihan.show', compact('tagihan'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $kartuPembayarans = KartuPembayaran::with(['user', 'tahunAjaran'])
             ->whereHas('tahunAjaran', function($q) {
@@ -60,8 +60,9 @@ class TagihanController extends Controller
             ->get();
 
         $jenisTagihans = JenisTagihan::with('kategori')->get();
+        $selectedKartuId = $request->kartu_id;
 
-        return view('admin.tagihan.create', compact('kartuPembayarans', 'jenisTagihans'));
+        return view('admin.tagihan.create', compact('kartuPembayarans', 'jenisTagihans', 'selectedKartuId'));
     }
 
     public function store(Request $request)

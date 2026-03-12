@@ -10,8 +10,10 @@ use App\Models\KategoriTagihan;
 use App\Models\Tagihan;
 use App\Models\TagihanDetail;
 use App\Models\Pembayaran;
+use App\Models\JenisTagihanDisabled;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class SantriController extends Controller
@@ -20,155 +22,318 @@ class SantriController extends Controller
     {
         $user = Auth::user();
         $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
-        
+        $userHasTahunAjaran = $user->tahun_ajaran_masuk_id !== null;
+
         if (!$tahunAjaranAktif) {
-            // Handle case when no active academic year
             return view('santri.dashboard', [
-                'user' => $user,
-                'tahunAjaranAktif' => null,
-                'kartuPembayaran' => null,
-                'tagihans' => collect(),
-                'totalTagihan' => 0,
-                'belumBayar' => 0,
-                'menungguVerifikasi' => 0,
-                'lunas' => 0,
-                'recentTagihan' => collect(),
-                'totalPembayaran' => 0
+                'user'                 => $user,
+                'tahunAjaranAktif'     => null,
+                'kartuPembayaran'      => null,
+                'tagihansTahunAktif'   => collect(),
+                'activTagihans'        => collect(),
+                'totalTagihanNominal'  => 0,
+                'totalSudahDibayar'    => 0,
+                'tagihanPerKategori'   => [],
+                'belumBayar'           => 0,
+                'menungguVerifikasi'   => 0,
+                'lunas'                => 0,
+                'recentTagihan'        => collect(),
+                'totalPembayaran'      => 0,
+                'userHasTahunAjaran'   => $userHasTahunAjaran,
             ]);
         }
-        
+
         // Ambil atau buat kartu pembayaran untuk tahun ajaran aktif
         $kartuPembayaran = KartuPembayaran::firstOrCreate([
-            'user_id' => $user->id,
-            'tahun_ajaran_id' => $tahunAjaranAktif->id
+            'user_id'         => $user->id,
+            'tahun_ajaran_id' => $tahunAjaranAktif->id,
         ], [
-            'nomor_kartu' => 'KP-' . str_replace('/', '', $tahunAjaranAktif->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)
+            'nomor_kartu' => 'KP-' . str_replace('/', '', $tahunAjaranAktif->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
         ]);
 
-        // Ambil semua tagihan santri untuk tahun ajaran aktif
-        $tagihans = Tagihan::where('kartu_id', $kartuPembayaran->id)
+        // Semua tagihan di tahun ajaran aktif
+        $tagihansTahunAktif = Tagihan::where('kartu_id', $kartuPembayaran->id)
             ->with(['tagihanDetails.jenisTagihan.kategori', 'pembayaran'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Calculate statistics
-        $totalTagihan = $tagihans->count();
-        $belumBayar = $tagihans->where('status', Tagihan::STATUS_BELUM_BAYAR)->count();
-        $menungguVerifikasi = $tagihans->where('status', Tagihan::STATUS_MENUNGGU_VERIFIKASI)->count();
-        $lunas = $tagihans->where('status', Tagihan::STATUS_LUNAS)->count();
+        // Tagihan yang belum selesai (perlu perhatian santri)
+        $activTagihans = $tagihansTahunAktif->whereIn('status', [
+            Tagihan::STATUS_BELUM_BAYAR,
+            Tagihan::STATUS_MENUNGGU_VERIFIKASI,
+        ]);
 
-        // Get recent tagihan for quick access
-        $recentTagihan = $tagihans->take(3);
+        $belumBayar         = $tagihansTahunAktif->where('status', Tagihan::STATUS_BELUM_BAYAR)->count();
+        $menungguVerifikasi = $tagihansTahunAktif->where('status', Tagihan::STATUS_MENUNGGU_VERIFIKASI)->count();
+        $lunas              = $tagihansTahunAktif->where('status', Tagihan::STATUS_LUNAS)->count();
+        $recentTagihan      = $activTagihans->take(3);
 
-        // Count pembayaran
-        $totalPembayaran = Pembayaran::whereHas('tagihan', function($q) use ($kartuPembayaran) {
+        $totalPembayaran = Pembayaran::whereHas('tagihan', function ($q) use ($kartuPembayaran) {
             $q->where('kartu_id', $kartuPembayaran->id);
-        })->count();
+        })->where('status', 'diterima')->sum('jumlah_bayar');
+
+        // ─── Total tagihan: TEORITIS (dari JenisTagihan) & aktual yang sudah dibayar ───
+        $totalTagihanNominal = 0;
+        $totalSudahDibayar   = 0;
+        $tagihanPerKategori  = [];
+
+        if ($userHasTahunAjaran) {
+            $tahunAjaranMasuk = TahunAjaran::find($user->tahun_ajaran_masuk_id);
+
+            if ($tahunAjaranMasuk) {
+                $allTahunAjaran = TahunAjaran::where('id', '>=', $tahunAjaranMasuk->id)
+                    ->orderBy('id')
+                    ->get();
+                $yearCount = $allTahunAjaran->count();
+
+                // 1. Hitung total TEORITIS berdasarkan JenisTagihan dan aturan per kategori
+                $allKategori = KategoriTagihan::with('jenisTagihan')->get();
+
+                foreach ($allKategori as $kategori) {
+                    $katNama      = strtolower($kategori->nama);
+                    $isRegistrasi = str_contains($katNama, 'registrasi');
+                    $isSyariah    = str_contains($katNama, 'syariah');
+
+                    $katTotal = 0;
+                    foreach ($kategori->jenisTagihan as $jenis) {
+                        if ($isRegistrasi) {
+                            // Registrasi: 1x seumur hidup
+                            $katTotal += $jenis->nominal;
+                        } elseif ($isSyariah && $jenis->is_bulanan) {
+                            // Syariah bulanan: 12 bulan × jumlah tahun
+                            $katTotal += $jenis->nominal * 12 * $yearCount;
+                        } else {
+                            // Syariah non-bulanan & Lainnya: 1x per tahun
+                            $katTotal += $jenis->nominal * $yearCount;
+                        }
+                    }
+
+                    if ($katTotal <= 0) continue;
+
+                    $totalTagihanNominal += $katTotal;
+                    $tagihanPerKategori[$katNama] = [
+                        'total_nominal' => $katTotal,
+                        'sudah_dibayar' => 0,
+                        'sisa'          => $katTotal,
+                        'tagihan_count' => 0,
+                        'lunas_count'   => 0,
+                    ];
+                }
+
+                // 2. Ambil aktual yang sudah LUNAS dari record Tagihan nyata
+                $allUserTagihan = Tagihan::whereHas('kartuPembayaran', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })->with(['tagihanDetails.jenisTagihan.kategori'])->get();
+
+                foreach ($allUserTagihan as $t) {
+                    $katNama = strtolower(
+                        $t->tagihanDetails->first()?->jenisTagihan?->kategori?->nama ?? ''
+                    );
+
+                    if (isset($tagihanPerKategori[$katNama])) {
+                        $tagihanPerKategori[$katNama]['tagihan_count']++;
+                        if ($t->status === Tagihan::STATUS_LUNAS) {
+                            $totalSudahDibayar += $t->total;
+                            $tagihanPerKategori[$katNama]['sudah_dibayar'] += $t->total;
+                            $tagihanPerKategori[$katNama]['lunas_count']++;
+                        }
+                    }
+                }
+
+                // 3. Hitung sisa per kategori
+                foreach ($tagihanPerKategori as &$data) {
+                    $data['sisa'] = max(0, $data['total_nominal'] - $data['sudah_dibayar']);
+                }
+                unset($data);
+            }
+        }
+
+        $totalSisa = max(0, $totalTagihanNominal - $totalSudahDibayar);
 
         return view('santri.dashboard', compact(
-            'user', 
-            'tahunAjaranAktif', 
+            'user',
+            'tahunAjaranAktif',
             'kartuPembayaran',
-            'tagihans',
-            'totalTagihan',
-            'belumBayar', 
+            'tagihansTahunAktif',
+            'activTagihans',
+            'totalTagihanNominal',
+            'totalSudahDibayar',
+            'totalSisa',
+            'tagihanPerKategori',
+            'belumBayar',
             'menungguVerifikasi',
             'lunas',
             'recentTagihan',
-            'totalPembayaran'
+            'totalPembayaran',
+            'userHasTahunAjaran'
         ));
     }
 
     public function formBuatTagihan(Request $request)
     {
         $user = Auth::user();
-        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
-        
-        $kartuPembayaran = KartuPembayaran::where('user_id', $user->id)
-            ->where('tahun_ajaran_id', $tahunAjaranAktif->id)
-            ->first();
 
-        // Get kategori from query parameter, default to 'registrasi'
-        $kategoriNama = $request->get('kategori', 'registrasi');
-        
-        // Get the selected kategori dengan jenis tagihan
-        $kategori = KategoriTagihan::where('nama', ucfirst($kategoriNama))
-            ->with('jenisTagihan')
+        if (!$user->tahun_ajaran_masuk_id) {
+            return redirect()->route('santri.dashboard')
+                ->with('error', 'Tahun ajaran Anda belum diatur. Silakan hubungi admin.');
+        }
+
+        $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
+        if (!$tahunAjaranAktif) {
+            return redirect()->route('santri.dashboard')
+                ->with('error', 'Tidak ada tahun ajaran aktif.');
+        }
+
+        $kategoriInput = strtolower($request->get('kategori', 'registrasi'));
+
+        $kategori = KategoriTagihan::with('jenisTagihan')
+            ->whereRaw('LOWER(nama) LIKE ?', ['%' . $kategoriInput . '%'])
             ->first();
 
         if (!$kategori) {
-            // Fallback to first kategori if not found
-            $kategori = KategoriTagihan::with('jenisTagihan')->first();
+            return redirect()->route('santri.dashboard')
+                ->with('error', 'Kategori tagihan tidak ditemukan.');
         }
 
+        $kartuPembayaran = KartuPembayaran::firstOrCreate(
+            ['user_id' => $user->id, 'tahun_ajaran_id' => $tahunAjaranAktif->id],
+            ['nomor_kartu' => 'KP-' . str_replace('/', '', $tahunAjaranAktif->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)]
+        );
+
+        $isRegistrasi = str_contains(strtolower($kategori->nama), 'registrasi');
+
+        // Cari detail yang sudah dibayar (ada di TagihanDetail yang sudah pernah dibuat)
+        $paidQuery = TagihanDetail::whereHas('jenisTagihan', fn($q) => $q->where('kategori_id', $kategori->id));
+
+        if ($isRegistrasi) {
+            // Registrasi: cek seluruh history user
+            $paidQuery->whereHas('tagihan.kartuPembayaran', fn($q) => $q->where('user_id', $user->id));
+        } else {
+            // Syariah/Lainnya: cek hanya tahun aktif
+            $paidQuery->whereHas('tagihan', fn($q) => $q->where('kartu_id', $kartuPembayaran->id));
+        }
+
+        $paidDetails = $paidQuery->get();
+        $paidJenisIds = $paidDetails->pluck('jenis_tagihan_id')->unique()->values()->toArray();
+        $paidBulanMap = [];
+        foreach ($paidDetails as $d) {
+            if ($d->bulan) {
+                $paidBulanMap[$d->jenis_tagihan_id][] = $d->bulan;
+            }
+        }
+
+        // Jenis tagihan yang dinonaktifkan admin untuk santri ini + tahun ajaran aktif
+        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($tahunAjaranAktif->id, $user->id);
+
+        // Filter jenisTagihan di kategori agar yang disabled tidak tampil
+        $kategori->setRelation(
+            'jenisTagihan',
+            $kategori->jenisTagihan->filter(fn($j) => !in_array($j->id, $disabledJenisIds))->values()
+        );
+
+        $kategoriNama = $kategoriInput;
+
         return view('santri.buat-tagihan', compact(
-            'user',
-            'tahunAjaranAktif',
-            'kartuPembayaran',
-            'kategori',
-            'kategoriNama'
+            'user', 'tahunAjaranAktif', 'kategori', 'kategoriNama',
+            'kartuPembayaran', 'paidJenisIds', 'paidBulanMap', 'disabledJenisIds'
         ));
     }
 
     public function storeTagihan(Request $request)
     {
-        $request->validate([
-            'jenis_tagihan_ids' => 'required|array',
-            'jenis_tagihan_ids.*' => 'exists:jenis_tagihan,id'
-        ]);
-
         $user = Auth::user();
+
         $tahunAjaranAktif = TahunAjaran::where('is_active', true)->first();
-        $kartuPembayaran = KartuPembayaran::where('user_id', $user->id)
-            ->where('tahun_ajaran_id', $tahunAjaranAktif->id)
-            ->first();
+        if (!$tahunAjaranAktif) {
+            return back()->with('error', 'Tidak ada tahun ajaran aktif.');
+        }
 
-        // Buat tagihan baru
-        $tagihan = Tagihan::create([
-            'kartu_id' => $kartuPembayaran->id,
-            'total' => 0,
-            'status' => Tagihan::STATUS_BELUM_BAYAR
-        ]);
+        $kartu = KartuPembayaran::firstOrCreate(
+            ['user_id' => $user->id, 'tahun_ajaran_id' => $tahunAjaranAktif->id],
+            ['nomor_kartu' => 'KP-' . str_replace('/', '', $tahunAjaranAktif->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)]
+        );
 
-        $totalTagihan = 0;
+        // Ambil jenis tagihan yang dinonaktifkan admin untuk santri ini
+        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($tahunAjaranAktif->id, $user->id);
 
-        // Buat detail tagihan
-        foreach ($request->jenis_tagihan_ids as $jenisTagihanId) {
-            $jenisTagihan = JenisTagihan::find($jenisTagihanId);
-            
-            if ($jenisTagihan->is_bulanan) {
-                // Untuk tagihan bulanan (Syariah)
-                $bulanList = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 
-                             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-                
-                foreach ($bulanList as $bulan) {
-                    TagihanDetail::create([
-                        'tagihan_id' => $tagihan->id,
-                        'jenis_tagihan_id' => $jenisTagihan->id,
-                        'bulan' => $bulan,
-                        'nominal' => $jenisTagihan->nominal,
-                        'status' => TagihanDetail::STATUS_BELUM_BAYAR
-                    ]);
-                    $totalTagihan += $jenisTagihan->nominal;
+        // syariah_items[jenisId][Bulan] = "1"
+        $syariahItems    = $request->input('syariah_items', []);
+        // jenis_tagihan_ids[] untuk registrasi & lainnya
+        $jenisTagihanIds = $request->input('jenis_tagihan_ids', []);
+
+        // Strip out any disabled ids (server-side protection)
+        $jenisTagihanIds = array_filter($jenisTagihanIds, fn($id) => !in_array($id, $disabledJenisIds));
+        $syariahItems    = array_filter($syariahItems, fn($id) => !in_array($id, $disabledJenisIds), ARRAY_FILTER_USE_KEY);
+
+        if (empty($syariahItems) && empty($jenisTagihanIds)) {
+            return back()->with('error', 'Pilih minimal satu jenis tagihan.');
+        }
+
+        $details = [];
+        $total   = 0;
+
+        // Syariah (bulanan) – cek duplikat per jenis+bulan di kartu ini
+        foreach ($syariahItems as $jenisId => $bulanMap) {
+            $jenis = JenisTagihan::find($jenisId);
+            if (!$jenis) continue;
+            foreach ($bulanMap as $bulan => $checked) {
+                $exists = TagihanDetail::whereHas('tagihan', fn($q) => $q->where('kartu_id', $kartu->id))
+                    ->where('jenis_tagihan_id', $jenisId)
+                    ->where('bulan', $bulan)
+                    ->exists();
+                if (!$exists) {
+                    $details[] = ['jenis_id' => $jenisId, 'bulan' => $bulan, 'nominal' => $jenis->nominal];
+                    $total += $jenis->nominal;
                 }
-            } else {
-                // Untuk tagihan satu kali (Registrasi/Lainnya)
-                TagihanDetail::create([
-                    'tagihan_id' => $tagihan->id,
-                    'jenis_tagihan_id' => $jenisTagihan->id,
-                    'bulan' => null,
-                    'nominal' => $jenisTagihan->nominal,
-                    'status' => TagihanDetail::STATUS_BELUM_BAYAR
-                ]);
-                $totalTagihan += $jenisTagihan->nominal;
             }
         }
 
-        // Update total tagihan
-        $tagihan->update(['total' => $totalTagihan]);
+        // Registrasi & Lainnya – cek duplikat berdasarkan aturan kategori
+        foreach ($jenisTagihanIds as $jenisId) {
+            $jenis = JenisTagihan::with('kategori')->find($jenisId);
+            if (!$jenis) continue;
+            $isRegistrasi = str_contains(strtolower($jenis->kategori?->nama ?? ''), 'registrasi');
+            if ($isRegistrasi) {
+                // Cek seluruh history user
+                $exists = TagihanDetail::whereHas('tagihan.kartuPembayaran', fn($q) => $q->where('user_id', $user->id))
+                    ->where('jenis_tagihan_id', $jenisId)
+                    ->exists();
+            } else {
+                // Cek hanya tahun aktif
+                $exists = TagihanDetail::whereHas('tagihan', fn($q) => $q->where('kartu_id', $kartu->id))
+                    ->where('jenis_tagihan_id', $jenisId)
+                    ->exists();
+            }
+            if (!$exists) {
+                $details[] = ['jenis_id' => $jenisId, 'bulan' => null, 'nominal' => $jenis->nominal];
+                $total += $jenis->nominal;
+            }
+        }
 
-        return redirect()->route('santri.tagihan-pembayaran', ['id' => $tagihan->id])
-            ->with('success', 'Tagihan berhasil dibuat!');
+        if (empty($details)) {
+            return back()->with('info', 'Semua tagihan yang dipilih sudah pernah dibuat atau sedang diproses.');
+        }
+
+        DB::transaction(function () use ($kartu, $details, $total) {
+            $tagihan = Tagihan::create([
+                'kartu_id' => $kartu->id,
+                'total'    => $total,
+                'status'   => Tagihan::STATUS_BELUM_BAYAR,
+            ]);
+
+            foreach ($details as $d) {
+                TagihanDetail::create([
+                    'tagihan_id'       => $tagihan->id,
+                    'jenis_tagihan_id' => $d['jenis_id'],
+                    'bulan'            => $d['bulan'],
+                    'nominal'          => $d['nominal'],
+                    'status'           => TagihanDetail::STATUS_BELUM_BAYAR,
+                ]);
+            }
+        });
+
+        return redirect()->route('santri.tagihan-pembayaran')
+            ->with('success', 'Tagihan berhasil dibuat! Silakan upload bukti pembayaran.');
     }
 
     public function konfirmasiTagihan($id)
@@ -185,70 +350,83 @@ class SantriController extends Controller
     public function tagihanPembayaran(Request $request)
     {
         $user = Auth::user();
-        
+
         // Get all tahun ajaran for selector
         $tahunAjaranList = TahunAjaran::orderBy('created_at', 'desc')->get();
-        
+
         // Determine selected tahun ajaran
         $selectedTahunAjaran = null;
         if ($request->filled('tahun_ajaran')) {
             $selectedTahunAjaran = TahunAjaran::find($request->tahun_ajaran);
         }
-        
         if (!$selectedTahunAjaran) {
             $selectedTahunAjaran = TahunAjaran::where('is_active', true)->first() ?: $tahunAjaranList->first();
         }
-        
+
         if (!$selectedTahunAjaran) {
             return view('santri.tagihan-pembayaran', [
-                'user' => $user,
-                'tahunAjaranList' => collect(),
+                'user'                => $user,
+                'tahunAjaranList'     => collect(),
                 'selectedTahunAjaran' => null,
-                'tagihans' => collect(),
-                'selectedTagihan' => null,
-                'totalTagihan' => 0,
-                'belumBayar' => 0,
-                'menungguVerifikasi' => 0,
-                'lunas' => 0
+                'tagihans'            => collect(),
+                'selectedTagihan'     => null,
+                'filterKategori'      => null,
+                'totalTagihan'        => 0,
+                'belumBayar'          => 0,
+                'menungguVerifikasi'  => 0,
+                'lunas'               => 0,
             ]);
         }
-        
+
         // Get kartu pembayaran for selected tahun ajaran
         $kartuPembayaran = KartuPembayaran::where('user_id', $user->id)
             ->where('tahun_ajaran_id', $selectedTahunAjaran->id)
             ->first();
-            
-        $tagihans = collect();
+
+        $tagihans        = collect();
         $selectedTagihan = null;
-        
+        $filterKategori  = $request->get('kategori'); // 'registrasi', 'syariah', 'lainnya', atau null
+
         if ($kartuPembayaran) {
-            // Get all tagihan for this kartu
-            $tagihans = Tagihan::where('kartu_id', $kartuPembayaran->id)
+            $query = Tagihan::where('kartu_id', $kartuPembayaran->id)
                 ->with(['tagihanDetails.jenisTagihan.kategori', 'pembayaran'])
-                ->orderBy('created_at', 'desc')
-                ->get();
-                
+                ->orderBy('created_at', 'desc');
+
+            $tagihans = $query->get();
+
+            // Filter by kategori jika diminta
+            if ($filterKategori) {
+                $tagihans = $tagihans->filter(function ($t) use ($filterKategori) {
+                    $katNama = strtolower(
+                        $t->tagihanDetails->first()?->jenisTagihan?->kategori?->nama ?? ''
+                    );
+                    return str_contains($katNama, strtolower($filterKategori));
+                });
+            }
+
             // Get selected tagihan if ID provided
             if ($request->filled('id')) {
-                $selectedTagihan = $tagihans->where('id', $request->id)->first();
+                $selectedTagihan = Tagihan::where('kartu_id', $kartuPembayaran->id)
+                    ->with(['tagihanDetails.jenisTagihan.kategori', 'pembayaran'])
+                    ->find($request->id);
             }
         }
-        
-        // Calculate statistics
-        $totalTagihan = $tagihans->count();
-        $belumBayar = $tagihans->where('status', Tagihan::STATUS_BELUM_BAYAR)->count();
+
+        $totalTagihan       = $tagihans->count();
+        $belumBayar         = $tagihans->where('status', Tagihan::STATUS_BELUM_BAYAR)->count();
         $menungguVerifikasi = $tagihans->where('status', Tagihan::STATUS_MENUNGGU_VERIFIKASI)->count();
-        $lunas = $tagihans->where('status', Tagihan::STATUS_LUNAS)->count();
-        
+        $lunas              = $tagihans->where('status', Tagihan::STATUS_LUNAS)->count();
+
         return view('santri.tagihan-pembayaran', compact(
             'user',
-            'tahunAjaranList', 
+            'tahunAjaranList',
             'selectedTahunAjaran',
             'tagihans',
             'selectedTagihan',
+            'filterKategori',
             'totalTagihan',
             'belumBayar',
-            'menungguVerifikasi', 
+            'menungguVerifikasi',
             'lunas'
         ));
     }
@@ -387,76 +565,164 @@ class SantriController extends Controller
     public function kartuPembayaran(Request $request)
     {
         $user = Auth::user();
-        
-        // Cek apakah user sudah memiliki tahun ajaran masuk
+
         if (!$user->tahun_ajaran_masuk_id) {
             return view('santri.kartu-pembayaran', [
-                'user' => $user,
-                'error' => 'Tahun ajaran masuk belum diset. Silakan hubungi admin.',
-                'tahunAjaran' => null,
-                'allTahunAjaran' => collect(),
-                'kategoriTagihan' => collect(),
-                'pembayaranData' => []
+                'user'                  => $user,
+                'error'                 => 'Tahun ajaran masuk belum diset. Silakan hubungi admin.',
+                'tahunAjaran'           => null,
+                'allTahunAjaran'        => collect(),
+                'kartuPembayaran'       => null,
+                'syariahPembayaran'     => [],
+                'nonSyariahPembayaran'  => [],
             ]);
         }
-        
-        // Get tahun ajaran yang bisa diakses santri (dari tahun masuknya hingga sekarang)
+
         $allTahunAjaran = TahunAjaran::where('id', '>=', $user->tahun_ajaran_masuk_id)
             ->orderBy('nama', 'desc')->get();
-        
-        // Get selected tahun ajaran or default to active one
-        $selectedTahunAjaranId = $request->get('tahun_ajaran_id');
-        if ($selectedTahunAjaranId) {
-            $tahunAjaran = TahunAjaran::where('id', $selectedTahunAjaranId)
-                ->where('id', '>=', $user->tahun_ajaran_masuk_id)
-                ->first();
+
+        $selectedId = $request->get('tahun_ajaran_id');
+        if ($selectedId) {
+            $tahunAjaran = TahunAjaran::where('id', $selectedId)
+                ->where('id', '>=', $user->tahun_ajaran_masuk_id)->first();
         } else {
             $tahunAjaran = TahunAjaran::where('is_active', true)
-                ->where('id', '>=', $user->tahun_ajaran_masuk_id)
-                ->first();
+                ->where('id', '>=', $user->tahun_ajaran_masuk_id)->first()
+                ?? $allTahunAjaran->first();
         }
-        
+
         if (!$tahunAjaran) {
-            return view('santri.kartu-pembayaran')->with('error', 'Tahun ajaran tidak ditemukan atau tidak dapat diakses');
+            return view('santri.kartu-pembayaran', [
+                'user'                  => $user,
+                'error'                 => 'Tahun ajaran tidak ditemukan.',
+                'tahunAjaran'           => null,
+                'allTahunAjaran'        => $allTahunAjaran,
+                'kartuPembayaran'       => null,
+                'syariahPembayaran'     => [],
+                'nonSyariahPembayaran'  => [],
+            ]);
         }
-        
-        // Get kartu pembayaran for selected year
-        $kartuPembayaran = KartuPembayaran::where('user_id', $user->id)
+
+        $kartuPembayaran      = KartuPembayaran::where('user_id', $user->id)
             ->where('tahun_ajaran_id', $tahunAjaran->id)
-            ->with('tahunAjaran')
             ->first();
-            
-        // Get all kategori tagihan
-        $kategoriTagihan = KategoriTagihan::with(['jenisTagihan'])->get();
-        
-        // Get pembayaran data for this year
-        $pembayaranData = [];
+
+        $syariahPembayaran    = [];
+        $nonSyariahPembayaran = [];
+
         if ($kartuPembayaran) {
             $tagihans = Tagihan::where('kartu_id', $kartuPembayaran->id)
-                ->with(['tagihanDetails.jenisTagihan.kategori', 'pembayaranTerakhir'])
+                ->with([
+                    'tagihanDetails.jenisTagihan.kategori',
+                    'pembayaran' => fn($q) => $q->where('status', 'diterima')->latest('verified_at'),
+                ])
                 ->get();
-                
+
             foreach ($tagihans as $tagihan) {
-                foreach ($tagihan->tagihanDetails as $detail) {
-                    $bulan = $detail->bulan;
-                    $kategoriId = $detail->jenisTagihan->kategori->id;
-                    
-                    if (!isset($pembayaranData[$bulan])) {
-                        $pembayaranData[$bulan] = [];
+                $isLunas           = $tagihan->status === Tagihan::STATUS_LUNAS;
+                $acceptedPembayaran = $tagihan->pembayaran->first();
+                // Use verified_at if available, fall back to tanggal_bayar
+                $tanggalVerif = null;
+                if ($isLunas && $acceptedPembayaran) {
+                    $raw = $acceptedPembayaran->verified_at ?? $acceptedPembayaran->tanggal_bayar;
+                    $tanggalVerif = $raw ? \Carbon\Carbon::parse($raw)->format('d.m.Y') : null;
+                }
+
+                // Determine category from first detail
+                $firstDetail = $tagihan->tagihanDetails->first();
+                $kategori    = $firstDetail?->jenisTagihan?->kategori;
+                if (!$kategori) continue;
+
+                $katNama   = strtolower($kategori->nama);
+                $isSyariah = str_contains($katNama, 'syariah') || str_contains($katNama, 'syahriyah');
+
+                if ($isSyariah) {
+                    foreach ($tagihan->tagihanDetails as $detail) {
+                        if ($detail->bulan) {
+                            // Only overwrite if this tagihan is lunas (or not yet recorded)
+                            if (!isset($syariahPembayaran[$detail->bulan]) || $isLunas) {
+                                $syariahPembayaran[$detail->bulan] = [
+                                    'nominal' => (float) $detail->nominal,
+                                    'tanggal' => $tanggalVerif,
+                                    'lunas'   => $isLunas,
+                                ];
+                            }
+                        }
                     }
-                    
-                    $pembayaranData[$bulan][$kategoriId] = [
-                        'sudah_bayar' => $tagihan->status === Tagihan::STATUS_LUNAS,
-                        'jumlah' => $detail->jumlah,
-                        'tanggal_bayar' => $tagihan->pembayaranTerakhir?->tanggal_bayar
-                    ];
+                } else {
+                    // For non-syariah: store per individual jenis tagihan name so that
+                    // items belonging to the same broad category (e.g. 'Registrasi') are
+                    // each stored independently and can be found by the card sections.
+                    foreach ($tagihan->tagihanDetails as $detail) {
+                        $jenisNama = strtolower(trim($detail->jenisTagihan?->nama_tagihan ?? ''));
+                        if (!$jenisNama) continue;
+
+                        $existing = $nonSyariahPembayaran[$jenisNama] ?? null;
+                        // Prefer lunas record if multiple tagihans cover the same item
+                        if (!$existing || $isLunas) {
+                            $nonSyariahPembayaran[$jenisNama] = [
+                                'label'   => strtoupper($detail->jenisTagihan->nama_tagihan),
+                                'nominal' => (float) $detail->nominal,
+                                'tanggal' => $tanggalVerif,
+                                'lunas'   => $isLunas,
+                            ];
+                        }
+                    }
                 }
             }
         }
 
         return view('santri.kartu-pembayaran', compact(
-            'user', 'kartuPembayaran', 'tahunAjaran', 'allTahunAjaran', 
-            'kategoriTagihan', 'pembayaranData'
+            'user', 'kartuPembayaran', 'tahunAjaran', 'allTahunAjaran',
+            'syariahPembayaran', 'nonSyariahPembayaran'
         ));
+    }
+
+    // ─────────────────────────────────────────────
+    //  PROFIL
+    // ─────────────────────────────────────────────
+    public function profil()
+    {
+        $user = Auth::user();
+        $tingkatanOptions = ['MI', 'MTs', 'MA', 'SMP', 'SMA', 'PT'];
+        $kelasOptions     = ['1', '2', '3', '4', '5', '6'];
+        $tingkatanNgajiOptions = ['Iqro 1', 'Iqro 2', 'Iqro 3', 'Iqro 4', 'Iqro 5', 'Iqro 6', 'Al-Quran'];
+        return view('santri.profil', compact('user', 'tingkatanOptions', 'kelasOptions', 'tingkatanNgajiOptions'));
+    }
+
+    public function updateProfil(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'nama_santri'    => 'required|string|max:150',
+            'nama_orang_tua' => 'nullable|string|max:150',
+            'no_telp'        => 'nullable|string|max:20',
+            'tempat_lahir'   => 'nullable|string|max:100',
+            'tanggal_lahir'  => 'nullable|date',
+            'jenis_kelamin'  => 'nullable|in:L,P',
+            'alamat'         => 'nullable|string',
+            'foto_profile'   => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        // tingkatan, kelas, tingkatan_ngaji hanya bisa diubah oleh Admin — tidak diproses di sini
+        $data = $request->only([
+            'nama_santri', 'nama_orang_tua', 'no_telp',
+            'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'alamat',
+        ]);
+
+        // Handle photo upload
+        if ($request->hasFile('foto_profile')) {
+            // Delete old photo if exists
+            if ($user->foto_profile && Storage::disk('public')->exists($user->foto_profile)) {
+                Storage::disk('public')->delete($user->foto_profile);
+            }
+            $path = $request->file('foto_profile')->store('foto_profile', 'public');
+            $data['foto_profile'] = $path;
+        }
+
+        $user->update($data);
+
+        return redirect()->route('santri.profil')->with('success', 'Profil berhasil diperbarui.');
     }
 }

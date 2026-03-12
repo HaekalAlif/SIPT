@@ -1,24 +1,25 @@
-{{-- filepath: resources/views/layouts/santri.blade.php --}}
+{{-- filepath: resources/views/layouts/admin.blade.php --}}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | SiPayPesantren</title>
+    <title>Admin Dashboard | SiPayPesantren</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    @stack('styles')
 </head>
 
 <body class="font-sans bg-gray-100 h-screen overflow-hidden">
     <div class="h-screen flex flex-col">
-        {{-- Header Hijau Full Width --}}
+        {{-- Header Green Full Width --}}
         <header class="bg-green-700 flex items-center justify-between px-6 py-3 w-full flex-shrink-0">
             <div class="flex items-center gap-3">
                 <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
-                    <i class="fa fa-mosque text-green-700 text-sm"></i>
+                    <i class="fa fa-user-shield text-green-700 text-sm"></i>
                 </div>
-                <span class="text-white font-bold text-lg">SiPayPesantren</span>
+                <span class="text-white font-bold text-lg">SiPayPesantren - Admin</span>
             </div>
             <div class="flex items-center gap-4">
                 <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
@@ -27,14 +28,14 @@
                 <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
                     <i class="fa fa-user text-green-700"></i>
                 </div>
-                <span class="text-white font-semibold">{{ Auth::check() ? Auth::user()->nama_santri : 'USER' }}</span>
+                <span class="text-white font-semibold">{{ Auth::check() ? Auth::user()->nama_santri : 'ADMIN' }}</span>
             </div>
         </header>
 
         {{-- Container untuk Sidebar + Content --}}
         <div class="flex flex-1 overflow-hidden">
             {{-- Sidebar --}}
-            @include('components.sidebar-santri')
+            @include('components.sidebar-admin')
 
             {{-- Main Content Area --}}
             <div class="flex-1 flex flex-col overflow-hidden">
@@ -44,30 +45,16 @@
                     <i class="fa fa-home text-gray-600"></i>
                     <span class="text-gray-600">Home</span>
                     <i class="fa fa-chevron-right text-gray-400 text-xs"></i>
-                    <span class="font-semibold text-gray-800">Dashboard</span>
+                    <span class="font-semibold text-gray-800">Admin Dashboard</span>
                 </div>
 
                 {{-- Content --}}
-                <div class="flex-1 overflow-y-auto p-6 bg-gray-100">
+                <div class="flex-1 overflow-y-auto p-6">
                     @yield('content')
                 </div>
             </div>
         </div>
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const submenuToggle = document.getElementById('submenu-toggle');
-                const submenuContent = document.getElementById('submenu-content');
-                const chevronIcon = document.getElementById('chevron-icon');
-
-                submenuToggle.addEventListener('click', function() {
-                    submenuContent.classList.toggle('hidden');
-                    chevronIcon.classList.toggle('fa-chevron-down');
-                    chevronIcon.classList.toggle('fa-chevron-up');
-                });
-            });
-        </script>
-        @stack('scripts')
 </body>
 
 </html>

@@ -177,9 +177,9 @@
                             Anda belum melakukan pembayaran apapun.
                         </p>
                         <div class="mt-6">
-                            <a href="{{ route('santri.buat-tagihan') }}"
+                            <a href="{{ route('santri.tagihan-pembayaran') }}"
                                 class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition">
-                                Buat Tagihan Baru
+                                Lihat Tagihan
                             </a>
                         </div>
                     </div>

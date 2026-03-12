@@ -1,7 +1,7 @@
 {{-- filepath: resources/views/components/sidebar-santri.blade.php --}}
-<aside class="w-64 bg-green-800 text-white flex flex-col min-h-screen">
+<aside class="w-64 bg-green-800 text-white flex flex-col h-full overflow-hidden">
     <!-- Navigation Menu -->
-    <nav class="flex-1 px-4 py-6 space-y-3">
+    <nav class="flex-1 overflow-y-auto px-4 py-6 space-y-3">
         <!-- Dashboard -->
         <a href="{{ route('santri.dashboard') }}"
             class="flex items-center gap-3 px-3 py-2 rounded {{ request()->routeIs('santri.dashboard') ? 'bg-green-700 text-green-200' : 'hover:bg-green-700' }} font-semibold transition">
@@ -10,7 +10,8 @@
         </a>
 
         <!-- Profil -->
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-700 transition">
+        <a href="{{ route('santri.profil') }}"
+            class="flex items-center gap-3 px-3 py-2 rounded {{ request()->routeIs('santri.profil') ? 'bg-green-700 text-green-200' : 'hover:bg-green-700' }} transition">
             <i class="fa fa-user w-5"></i>
             <span>Profil</span>
         </a>
@@ -57,7 +58,7 @@
     </nav>
 
     <!-- Logout at Bottom -->
-    <div class="px-4 pb-6">
+    <div class="px-4 pb-6 flex-shrink-0">
         <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
             @csrf
         </form>

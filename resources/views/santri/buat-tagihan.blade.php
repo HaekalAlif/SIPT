@@ -36,24 +36,24 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <div class="flex">
-                        <span class="w-32 text-gray-600">Nama Santri</span>
+                        <span class="w-36 text-gray-600">Nama Santri</span>
                         <span class="text-gray-600 mr-2">:</span>
                         <span class="font-semibold">{{ $user->nama_santri }}</span>
                     </div>
                     <div class="flex mt-2">
-                        <span class="w-32 text-gray-600">Kelas/Tingkatan</span>
+                        <span class="w-36 text-gray-600">Kelas/Tingkatan</span>
                         <span class="text-gray-600 mr-2">:</span>
                         <span class="font-semibold">{{ $user->tingkatan }} - {{ $user->kelas }}</span>
                     </div>
                 </div>
                 <div>
                     <div class="flex">
-                        <span class="w-32 text-gray-600">Nama Orang Tua</span>
+                        <span class="w-36 text-gray-600">Nama Orang Tua</span>
                         <span class="text-gray-600 mr-2">:</span>
                         <span class="font-semibold">{{ $user->nama_orang_tua ?? '-' }}</span>
                     </div>
                     <div class="flex mt-2">
-                        <span class="w-32 text-gray-600">No.Telp/hp</span>
+                        <span class="w-36 text-gray-600">No.Telp/hp</span>
                         <span class="text-gray-600 mr-2">:</span>
                         <span class="font-semibold">{{ $user->no_telp ?? '-' }}</span>
                     </div>
@@ -94,47 +94,88 @@
                         </thead>
                         <tbody>
                             @if ($kategoriNama == 'syariah')
-                                @foreach (['Januari', 'Febuary', 'Maret', 'APRIL', 'Mei', 'Juni', 'July', 'Agustus', 'September', 'Oktober', 'November', 'Desember'] as $bulan)
-                                    @php
-                                        $jenisTagihan = $kategori->jenisTagihan->where('is_bulanan', true)->first();
-                                    @endphp
-                                    @if ($jenisTagihan)
-                                        <tr class="border-b border-gray-200">
-                                            <td class="py-3 px-4">{{ $bulan }}</td>
-                                            <td class="py-3 px-4">RP.
-                                                {{ number_format($jenisTagihan->nominal, 0, ',', '.') }}</td>
-                                            <td class="py-3 px-4 text-center">
-                                                <input type="checkbox" name="jenis_tagihan_ids[]"
-                                                    value="{{ $jenisTagihan->id }}"
-                                                    class="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500"
-                                                    data-bulan="{{ $bulan }}">
-                                            </td>
-                                            <td class="py-3 px-4 text-center">
-                                                <span
-                                                    class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold">BELUM
-                                                    TERBAYAR</span>
-                                            </td>
-                                        </tr>
-                                    @endif
-                                @endforeach
-                            @else
-                                @foreach ($kategori->jenisTagihan->where('is_bulanan', false) ?? [] as $jenisTagihan)
-                                    <tr class="border-b border-gray-200">
-                                        <td class="py-3 px-4">{{ $jenisTagihan->nama_tagihan }}</td>
-                                        <td class="py-3 px-4">RP. {{ number_format($jenisTagihan->nominal, 0, ',', '.') }}
-                                        </td>
-                                        <td class="py-3 px-4 text-center">
-                                            <input type="checkbox" name="jenis_tagihan_ids[]"
-                                                value="{{ $jenisTagihan->id }}"
-                                                class="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500">
-                                        </td>
-                                        <td class="py-3 px-4 text-center">
-                                            <span
-                                                class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold">BELUM
-                                                TERBAYAR</span>
+                                @php $jenisTagihanSyariah = $kategori->jenisTagihan->where('is_bulanan', true)->first(); @endphp
+                                @if (!$jenisTagihanSyariah)
+                                    <tr>
+                                        <td colspan="4" class="py-8 text-center text-gray-400 text-sm">
+                                            Tidak ada tagihan syariah yang tersedia untuk Anda saat ini.
                                         </td>
                                     </tr>
-                                @endforeach
+                                @else
+                                    @foreach (['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'] as $bulan)
+                                        @php
+                                            $sudahBayar =
+                                                isset($paidBulanMap[$jenisTagihanSyariah->id]) &&
+                                                in_array($bulan, $paidBulanMap[$jenisTagihanSyariah->id]);
+                                        @endphp
+                                        <tr
+                                            class="border-b border-gray-200 {{ $sudahBayar ? 'opacity-60 bg-gray-50' : '' }}">
+                                            <td class="py-3 px-4">{{ $bulan }}</td>
+                                            <td class="py-3 px-4">Rp
+                                                {{ number_format($jenisTagihanSyariah->nominal, 0, ',', '.') }}</td>
+                                            <td class="py-3 px-4 text-center">
+                                                @if ($sudahBayar)
+                                                    <input type="checkbox" disabled checked
+                                                        class="w-5 h-5 border-gray-300 rounded">
+                                                @else
+                                                    <input type="checkbox"
+                                                        name="syariah_items[{{ $jenisTagihanSyariah->id }}][{{ $bulan }}]"
+                                                        value="1"
+                                                        class="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500">
+                                                @endif
+                                            </td>
+                                            <td class="py-3 px-4 text-center">
+                                                @if ($sudahBayar)
+                                                    <span
+                                                        class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold">SUDAH
+                                                        TERBAYAR</span>
+                                                @else
+                                                    <span
+                                                        class="bg-red-100 text-red-700 px-3 py-1 rounded text-sm font-semibold">BELUM
+                                                        TERBAYAR</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
+                            @else
+                                @forelse ($kategori->jenisTagihan->where('is_bulanan', false) as $jenisTagihan)
+                                    @php
+                                        $sudahBayar = in_array($jenisTagihan->id, $paidJenisIds ?? []);
+                                    @endphp
+                                    <tr class="border-b border-gray-200 {{ $sudahBayar ? 'opacity-60 bg-gray-50' : '' }}">
+                                        <td class="py-3 px-4">{{ $jenisTagihan->nama_tagihan }}</td>
+                                        <td class="py-3 px-4">Rp {{ number_format($jenisTagihan->nominal, 0, ',', '.') }}
+                                        </td>
+                                        <td class="py-3 px-4 text-center">
+                                            @if ($sudahBayar)
+                                                <input type="checkbox" disabled checked
+                                                    class="w-5 h-5 border-gray-300 rounded">
+                                            @else
+                                                <input type="checkbox" name="jenis_tagihan_ids[]"
+                                                    value="{{ $jenisTagihan->id }}"
+                                                    class="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500">
+                                            @endif
+                                        </td>
+                                        <td class="py-3 px-4 text-center">
+                                            @if ($sudahBayar)
+                                                <span
+                                                    class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold">SUDAH
+                                                    TERBAYAR</span>
+                                            @else
+                                                <span
+                                                    class="bg-red-100 text-red-700 px-3 py-1 rounded text-sm font-semibold">BELUM
+                                                    TERBAYAR</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="py-8 text-center text-gray-400 text-sm">
+                                            Tidak ada tagihan yang tersedia untuk Anda saat ini.
+                                        </td>
+                                    </tr>
+                                @endforelse
                             @endif
                         </tbody>
                     </table>
@@ -156,21 +197,16 @@
     </div>
 
     <script>
-        // Handle bulk syariah selection for displaying single jenis_tagihan
-        @if ($kategoriNama == 'syariah')
-            document.addEventListener('DOMContentLoaded', function() {
-                const checkboxes = document.querySelectorAll('input[name="jenis_tagihan_ids[]"]');
-                let firstChecked = false;
-
-                checkboxes.forEach(checkbox => {
-                    checkbox.addEventListener('change', function() {
-                        if (this.checked && !firstChecked) {
-                            firstChecked = true;
-                            // Disable other checkboxes or allow multiple selection
-                        }
+        // Pilih semua checkbox sekaligus
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkAll = document.getElementById('check-all');
+            if (checkAll) {
+                checkAll.addEventListener('change', function() {
+                    document.querySelectorAll('input[type="checkbox"]:not([disabled])').forEach(cb => {
+                        cb.checked = this.checked;
                     });
                 });
-            });
-        @endif
+            }
+        });
     </script>
 @endsection
