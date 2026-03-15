@@ -14,10 +14,6 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -35,6 +31,7 @@ Route::middleware(['auth', 'role:santri'])->prefix('santri')->name('santri.')->g
     Route::post('/upload-pembayaran/{tagihan}', [SantriController::class, 'storeUploadPembayaran'])->name('store-pembayaran');
     Route::get('/tagihan-pembayaran', [SantriController::class, 'tagihanPembayaran'])->name('tagihan-pembayaran');
     Route::get('/kartu-pembayaran', [SantriController::class, 'kartuPembayaran'])->name('kartu-pembayaran');
+    Route::get('/kartu-pembayaran/pdf', [SantriController::class, 'downloadKartuPembayaranPdf'])->name('kartu-pembayaran.pdf');
     Route::get('/profil', [SantriController::class, 'profil'])->name('profil');
     Route::post('/profil', [SantriController::class, 'updateProfil'])->name('profil.update');
 });
@@ -96,15 +93,21 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/laporan/pemasukan', [AdminController::class, 'laporanPemasukan'])->name('laporan-pemasukan');
     Route::get('/laporan/tunggakan', [AdminController::class, 'laporanTunggakan'])->name('laporan-tunggakan');
     Route::get('/laporan/rekap', [AdminController::class, 'laporanRekap'])->name('laporan-rekap');
+    Route::get('/laporan/rekap-kelas', [AdminController::class, 'laporanRekapKelas'])->name('laporan-rekap-kelas');
+    Route::get('/laporan/rekap-kelas/pdf', [AdminController::class, 'downloadLaporanRekapKelasPdf'])->name('laporan-rekap-kelas.pdf');
     
     // Master Tagihan (per-tahun-ajaran config)
     Route::get('/master-tagihan', [MasterTagihanController::class, 'index'])->name('master-tagihan');
     Route::put('/master-tagihan', [MasterTagihanController::class, 'update'])->name('master-tagihan.update');
 
     // Tagihan Management
+    Route::get('/bayar-manual', [TagihanController::class, 'manualPaymentIndex'])->name('manual-payment.index');
+    Route::get('/bayar-manual/santri/{user}', [TagihanController::class, 'manualPaymentShow'])->name('manual-payment.show');
+    Route::post('/bayar-manual/santri/{user}', [TagihanController::class, 'storeBulkManualPayment'])->name('manual-payment.store-bulk');
     Route::resource('tagihan', TagihanController::class);
     Route::put('/tagihan/{tagihan}/detail/{detail}', [TagihanController::class, 'updateDetail'])->name('tagihan.update-detail');
     Route::delete('/tagihan/{tagihan}/detail/{detail}', [TagihanController::class, 'deleteDetail'])->name('tagihan.delete-detail');
+    Route::post('/tagihan/{tagihan}/manual-payment', [TagihanController::class, 'storeManualPayment'])->name('tagihan.manual-payment');
 
     // Data Santri
     Route::get('/data-santri', function() {

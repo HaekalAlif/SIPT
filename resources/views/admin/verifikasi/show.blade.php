@@ -48,11 +48,6 @@
                             {{ $pembayaran->tagihan->kartuPembayaran->user->nama_santri ?? '-' }}</p>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-500 mb-1">NIS</p>
-                        <p class="text-base font-medium text-gray-900">
-                            {{ $pembayaran->tagihan->kartuPembayaran->user->nis ?? '-' }}</p>
-                    </div>
-                    <div>
                         <p class="text-sm text-gray-500 mb-1">Tahun Ajaran</p>
                         <p class="text-base font-medium text-gray-900">
                             {{ $pembayaran->tagihan->kartuPembayaran->tahunAjaran->tahun_ajaran ?? '-' }}</p>

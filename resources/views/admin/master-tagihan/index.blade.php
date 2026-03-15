@@ -13,10 +13,30 @@
         </div>
     @endif
 
-    {{-- Filter: Santri + Tahun Ajaran --}}
+    {{-- Filter: Tahun Ajaran + Tingkatan + Kelas + Santri --}}
     <form method="GET" action="{{ route('admin.master-tagihan') }}"
         class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div class="flex flex-col sm:flex-row gap-3 items-end">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Tingkatan</label>
+                <select name="tingkatan" id="tingkatan"
+                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 text-sm transition">
+                    <option value="">-- Semua Tingkatan --</option>
+                    @foreach ($tingkatanOptions as $tingkatan)
+                        <option value="{{ $tingkatan }}"
+                            {{ ($selectedTingkatan ?? '') === $tingkatan ? 'selected' : '' }}>
+                            {{ $tingkatan }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Kelas</label>
+                <select name="kelas" id="kelas"
+                    class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 text-sm transition">
+                    <option value="">-- Semua Kelas --</option>
+                </select>
+            </div>
             <div class="flex-1">
                 <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Santri</label>
                 <select name="santri_id" id="santri_id"
@@ -24,7 +44,7 @@
                     <option value="">-- Pilih Santri --</option>
                     @foreach ($santris as $santri)
                         <option value="{{ $santri->id }}" {{ $selectedUserId == $santri->id ? 'selected' : '' }}>
-                            {{ $santri->nama_santri }} — {{ $santri->nis ?? '-' }}
+                            {{ $santri->nama_santri }} -
                             {{ $santri->tingkatan_ngaji ? ' (' . $santri->tingkatan_ngaji . ')' : '' }}
                         </option>
                     @endforeach
@@ -62,6 +82,8 @@
             @method('PUT')
             <input type="hidden" name="user_id" value="{{ $selectedUserId }}">
             <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTaId }}">
+            <input type="hidden" name="tingkatan" value="{{ $selectedTingkatan }}">
+            <input type="hidden" name="kelas" value="{{ $selectedKelas }}">
 
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-5 pb-3 border-b gap-3">
@@ -72,7 +94,6 @@
                         </h3>
                         <p class="text-xs text-gray-400 mt-0.5">
                             Tahun Ajaran: <strong>{{ $selectedTa?->nama }}</strong>
-                            &nbsp;·&nbsp; NIS: {{ $selectedSantri?->nis ?? '-' }}
                             &nbsp;·&nbsp; Tingkatan: {{ $selectedSantri?->tingkatan_ngaji ?? '-' }}
                         </p>
                     </div>
@@ -132,6 +153,83 @@
     @endif
 
     <script>
+        const kelasOptionsByTingkatan = @json($kelasOptionsByTingkatan ?? []);
+        const santriOptions = @json($santriOptions ?? []);
+        const tingkatanSelect = document.getElementById('tingkatan');
+        const kelasSelect = document.getElementById('kelas');
+        const tahunAjaranSelect = document.getElementById('tahun_ajaran_id');
+        const santriSelect = document.getElementById('santri_id');
+        const selectedKelas = @json($selectedKelas ?? '');
+        const selectedSantriId = @json($selectedUserId ?? '');
+
+        function renderKelasOptions() {
+            if (!tingkatanSelect || !kelasSelect) return;
+
+            const tingkatan = tingkatanSelect.value;
+            const options = kelasOptionsByTingkatan[tingkatan] || [];
+
+            kelasSelect.innerHTML = '<option value="">-- Semua Kelas --</option>';
+            options.forEach((kelas) => {
+                const option = document.createElement('option');
+                option.value = kelas;
+                option.textContent = kelas;
+                if (selectedKelas === kelas) {
+                    option.selected = true;
+                }
+                kelasSelect.appendChild(option);
+            });
+        }
+
+        tingkatanSelect?.addEventListener('change', () => {
+            kelasSelect.value = '';
+            renderKelasOptions();
+            renderSantriOptions();
+        });
+
+        kelasSelect?.addEventListener('change', () => {
+            renderSantriOptions();
+        });
+
+        tahunAjaranSelect?.addEventListener('change', () => {
+            renderSantriOptions();
+        });
+
+        function renderSantriOptions() {
+            if (!santriSelect || !tingkatanSelect || !kelasSelect || !tahunAjaranSelect) return;
+
+            const selectedTingkatan = tingkatanSelect.value;
+            const selectedKelas = kelasSelect.value;
+            const selectedTaId = tahunAjaranSelect.value ? parseInt(tahunAjaranSelect.value, 10) : null;
+
+            santriSelect.innerHTML = '<option value="">-- Pilih Santri --</option>';
+
+            const filtered = santriOptions.filter((s) => {
+                if (selectedTaId && s.tahun_ajaran_masuk_id && s.tahun_ajaran_masuk_id > selectedTaId) {
+                    return false;
+                }
+                if (selectedTingkatan && s.tingkatan !== selectedTingkatan) {
+                    return false;
+                }
+                if (selectedKelas && s.kelas !== selectedKelas) {
+                    return false;
+                }
+                return true;
+            });
+
+            filtered.forEach((s) => {
+                const option = document.createElement('option');
+                option.value = String(s.id);
+                option.textContent = `${s.nama_santri}${s.tingkatan_ngaji ? ' (' + s.tingkatan_ngaji + ')' : ''}`;
+                if (String(selectedSantriId) === String(s.id)) {
+                    option.selected = true;
+                }
+                santriSelect.appendChild(option);
+            });
+        }
+
+        renderKelasOptions();
+        renderSantriOptions();
+
         function checkAll(val) {
             document.querySelectorAll('.jenis-item input[type=checkbox]').forEach(cb => {
                 cb.checked = val;

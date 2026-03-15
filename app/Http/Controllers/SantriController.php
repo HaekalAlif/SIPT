@@ -11,10 +11,13 @@ use App\Models\Tagihan;
 use App\Models\TagihanDetail;
 use App\Models\Pembayaran;
 use App\Models\JenisTagihanDisabled;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Collection;
 
 class SantriController extends Controller
 {
@@ -87,7 +90,9 @@ class SantriController extends Controller
                 $yearCount = $allTahunAjaran->count();
 
                 // 1. Hitung total TEORITIS berdasarkan JenisTagihan dan aturan per kategori
-                $allKategori = KategoriTagihan::with('jenisTagihan')->get();
+                $allKategori = KategoriTagihan::with([
+                    'jenisTagihan' => fn($q) => $q->applicableForUser($user),
+                ])->get();
 
                 foreach ($allKategori as $kategori) {
                     $katNama      = strtolower($kategori->nama);
@@ -186,7 +191,9 @@ class SantriController extends Controller
 
         $kategoriInput = strtolower($request->get('kategori', 'registrasi'));
 
-        $kategori = KategoriTagihan::with('jenisTagihan')
+        $kategori = KategoriTagihan::with([
+                'jenisTagihan' => fn($q) => $q->applicableForUser($user),
+            ])
             ->whereRaw('LOWER(nama) LIKE ?', ['%' . $kategoriInput . '%'])
             ->first();
 
@@ -194,6 +201,8 @@ class SantriController extends Controller
             return redirect()->route('santri.dashboard')
                 ->with('error', 'Kategori tagihan tidak ditemukan.');
         }
+
+        /** @var \App\Models\KategoriTagihan $kategori */
 
         $kartuPembayaran = KartuPembayaran::firstOrCreate(
             ['user_id' => $user->id, 'tahun_ajaran_id' => $tahunAjaranAktif->id],
@@ -225,11 +234,13 @@ class SantriController extends Controller
         // Jenis tagihan yang dinonaktifkan admin untuk santri ini + tahun ajaran aktif
         $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($tahunAjaranAktif->id, $user->id);
 
-        // Filter jenisTagihan di kategori agar yang disabled tidak tampil
-        $kategori->setRelation(
-            'jenisTagihan',
-            $kategori->jenisTagihan->filter(fn($j) => !in_array($j->id, $disabledJenisIds))->values()
-        );
+        // Filter jenisTagihan di kategori agar yang disabled tidak tampil,
+        // lalu pilih item paling relevan jika ada versi general + versi khusus.
+        $filteredJenisTagihan = $kategori->jenisTagihan
+            ->filter(fn($j) => !in_array($j->id, $disabledJenisIds))
+            ->values();
+
+        $kategori->setRelation('jenisTagihan', $this->pickPreferredJenisTagihan($filteredJenisTagihan, $user));
 
         $kategoriNama = $kategoriInput;
 
@@ -255,15 +266,25 @@ class SantriController extends Controller
 
         // Ambil jenis tagihan yang dinonaktifkan admin untuk santri ini
         $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($tahunAjaranAktif->id, $user->id);
+        $allowedJenisIds = JenisTagihan::applicableForUser($user)
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->all();
 
         // syariah_items[jenisId][Bulan] = "1"
         $syariahItems    = $request->input('syariah_items', []);
         // jenis_tagihan_ids[] untuk registrasi & lainnya
         $jenisTagihanIds = $request->input('jenis_tagihan_ids', []);
 
-        // Strip out any disabled ids (server-side protection)
-        $jenisTagihanIds = array_filter($jenisTagihanIds, fn($id) => !in_array($id, $disabledJenisIds));
-        $syariahItems    = array_filter($syariahItems, fn($id) => !in_array($id, $disabledJenisIds), ARRAY_FILTER_USE_KEY);
+        // Strip out any disabled/unavailable ids (server-side protection)
+        $jenisTagihanIds = array_filter($jenisTagihanIds, function ($id) use ($disabledJenisIds, $allowedJenisIds) {
+            $id = (int) $id;
+            return !in_array($id, $disabledJenisIds) && in_array($id, $allowedJenisIds);
+        });
+        $syariahItems = array_filter($syariahItems, function ($id) use ($disabledJenisIds, $allowedJenisIds) {
+            $id = (int) $id;
+            return !in_array($id, $disabledJenisIds) && in_array($id, $allowedJenisIds);
+        }, ARRAY_FILTER_USE_KEY);
 
         if (empty($syariahItems) && empty($jenisTagihanIds)) {
             return back()->with('error', 'Pilih minimal satu jenis tagihan.');
@@ -564,10 +585,42 @@ class SantriController extends Controller
 
     public function kartuPembayaran(Request $request)
     {
-        $user = Auth::user();
+        $data = $this->buildKartuPembayaranViewData($request, Auth::user());
 
+        return view('santri.kartu-pembayaran', $data);
+    }
+
+    public function downloadKartuPembayaranPdf(Request $request)
+    {
+        $data = $this->buildKartuPembayaranViewData($request, Auth::user());
+
+        if (isset($data['error']) || empty($data['kartuPembayaran'])) {
+            return redirect()->route('santri.kartu-pembayaran', $request->only('tahun_ajaran_id'))
+                ->with('error', $data['error'] ?? 'Kartu pembayaran belum tersedia.');
+        }
+
+        $options = new Options();
+        $options->set('defaultFont', 'sans-serif');
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml(view('santri.pdf.kartu-pembayaran', $data)->render());
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->render();
+
+        $filename = 'kartu-pembayaran-' . ($data['user']->nama_santri ?? 'santri') . '-' . ($data['tahunAjaran']->nama ?? 'tahun') . '.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . str_replace([' ', '/'], ['-', '-'], $filename) . '"',
+        ]);
+    }
+
+    private function buildKartuPembayaranViewData(Request $request, User $user): array
+    {
         if (!$user->tahun_ajaran_masuk_id) {
-            return view('santri.kartu-pembayaran', [
+            return [
                 'user'                  => $user,
                 'error'                 => 'Tahun ajaran masuk belum diset. Silakan hubungi admin.',
                 'tahunAjaran'           => null,
@@ -575,7 +628,7 @@ class SantriController extends Controller
                 'kartuPembayaran'       => null,
                 'syariahPembayaran'     => [],
                 'nonSyariahPembayaran'  => [],
-            ]);
+            ];
         }
 
         $allTahunAjaran = TahunAjaran::where('id', '>=', $user->tahun_ajaran_masuk_id)
@@ -592,7 +645,7 @@ class SantriController extends Controller
         }
 
         if (!$tahunAjaran) {
-            return view('santri.kartu-pembayaran', [
+            return [
                 'user'                  => $user,
                 'error'                 => 'Tahun ajaran tidak ditemukan.',
                 'tahunAjaran'           => null,
@@ -600,7 +653,7 @@ class SantriController extends Controller
                 'kartuPembayaran'       => null,
                 'syariahPembayaran'     => [],
                 'nonSyariahPembayaran'  => [],
-            ]);
+            ];
         }
 
         $kartuPembayaran      = KartuPembayaran::where('user_id', $user->id)
@@ -623,7 +676,7 @@ class SantriController extends Controller
                 $acceptedPembayaran = $tagihan->pembayaran->first();
                 // Use verified_at if available, fall back to tanggal_bayar
                 $tanggalVerif = null;
-                if ($isLunas && $acceptedPembayaran) {
+                if ($acceptedPembayaran) {
                     $raw = $acceptedPembayaran->verified_at ?? $acceptedPembayaran->tanggal_bayar;
                     $tanggalVerif = $raw ? \Carbon\Carbon::parse($raw)->format('d.m.Y') : null;
                 }
@@ -638,13 +691,14 @@ class SantriController extends Controller
 
                 if ($isSyariah) {
                     foreach ($tagihan->tagihanDetails as $detail) {
+                        $detailLunas = $isLunas || $detail->status === TagihanDetail::STATUS_LUNAS;
                         if ($detail->bulan) {
-                            // Only overwrite if this tagihan is lunas (or not yet recorded)
-                            if (!isset($syariahPembayaran[$detail->bulan]) || $isLunas) {
+                            // Prefer data from lunas detail/tagihan for monthly card breakdown.
+                            if (!isset($syariahPembayaran[$detail->bulan]) || $detailLunas) {
                                 $syariahPembayaran[$detail->bulan] = [
                                     'nominal' => (float) $detail->nominal,
                                     'tanggal' => $tanggalVerif,
-                                    'lunas'   => $isLunas,
+                                    'lunas'   => $detailLunas,
                                 ];
                             }
                         }
@@ -654,17 +708,18 @@ class SantriController extends Controller
                     // items belonging to the same broad category (e.g. 'Registrasi') are
                     // each stored independently and can be found by the card sections.
                     foreach ($tagihan->tagihanDetails as $detail) {
+                        $detailLunas = $isLunas || $detail->status === TagihanDetail::STATUS_LUNAS;
                         $jenisNama = strtolower(trim($detail->jenisTagihan?->nama_tagihan ?? ''));
                         if (!$jenisNama) continue;
 
                         $existing = $nonSyariahPembayaran[$jenisNama] ?? null;
-                        // Prefer lunas record if multiple tagihans cover the same item
-                        if (!$existing || $isLunas) {
+                        // Prefer lunas detail/tagihan record if multiple tagihans cover the same item.
+                        if (!$existing || $detailLunas) {
                             $nonSyariahPembayaran[$jenisNama] = [
                                 'label'   => strtoupper($detail->jenisTagihan->nama_tagihan),
                                 'nominal' => (float) $detail->nominal,
                                 'tanggal' => $tanggalVerif,
-                                'lunas'   => $isLunas,
+                                'lunas'   => $detailLunas,
                             ];
                         }
                     }
@@ -672,10 +727,52 @@ class SantriController extends Controller
             }
         }
 
-        return view('santri.kartu-pembayaran', compact(
+        return compact(
             'user', 'kartuPembayaran', 'tahunAjaran', 'allTahunAjaran',
             'syariahPembayaran', 'nonSyariahPembayaran'
-        ));
+        );
+    }
+
+    private function pickPreferredJenisTagihan(Collection $jenisTagihan, User $user): Collection
+    {
+        $tingkatan = strtoupper(trim((string) ($user->tingkatan ?? '')));
+        $ngaji = trim((string) ($user->tingkatan_ngaji ?? ''));
+
+        return $jenisTagihan
+            ->groupBy(fn($item) => $this->normalizeJenisTagihanKey($item->nama_tagihan ?? ''))
+            ->map(function (Collection $group) use ($tingkatan, $ngaji) {
+                return $group
+                    ->sortByDesc(function ($item) use ($tingkatan, $ngaji) {
+                        $scope = $item->target_scope ?? JenisTagihan::TARGET_SCOPE_ALL;
+                        $value = (string) ($item->target_value ?? '');
+
+                        if ($scope === JenisTagihan::TARGET_SCOPE_TINGKATAN && strtoupper($value) === $tingkatan) {
+                            return 30;
+                        }
+
+                        if ($scope === JenisTagihan::TARGET_SCOPE_NGAJI && $value === $ngaji) {
+                            return 20;
+                        }
+
+                        if ($scope === JenisTagihan::TARGET_SCOPE_ALL || $scope === null || $scope === '') {
+                            return 10;
+                        }
+
+                        return 0;
+                    })
+                    ->first();
+            })
+            ->filter()
+            ->values();
+    }
+
+    private function normalizeJenisTagihanKey(string $name): string
+    {
+        $normalized = strtolower(trim($name));
+        $normalized = preg_replace('/\s*\(.*?\)\s*/', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 
     // ─────────────────────────────────────────────

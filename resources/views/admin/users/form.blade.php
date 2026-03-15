@@ -119,23 +119,11 @@
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Data Santri</h3>
                     </div>
 
-                    <!-- NIS -->
-                    <div>
-                        <label for="nis" class="block text-sm font-medium text-gray-700 mb-1">Nomor Induk Santri
-                            (NIS)</label>
-                        <input type="text" name="nis" id="nis" value="{{ old('nis', $user->nis ?? '') }}"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
-                            placeholder="Nomor Induk Santri">
-                        @error('nis')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-
                     <!-- Tahun Masuk -->
-                    <div>
+                    <div class="md:col-span-2">
                         <label for="tahun_ajaran_masuk_id" class="block text-sm font-medium text-gray-700 mb-1">Tahun
                             Masuk</label>
-                        <select name="tahun_ajaran_masuk_id" id="tahun_ajaran_masuk_id"
+                        <select name="tahun_ajaran_masuk_id" id="tahun_ajaran_masuk_id" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
                             <option value="">Pilih Tahun Ajaran</option>
                             @foreach ($tahunAjaran as $ta)
@@ -151,7 +139,7 @@
                     <div>
                         <label for="tempat_lahir" class="block text-sm font-medium text-gray-700 mb-1">Tempat Lahir</label>
                         <input type="text" name="tempat_lahir" id="tempat_lahir"
-                            value="{{ old('tempat_lahir', $user->tempat_lahir ?? '') }}"
+                            value="{{ old('tempat_lahir', $user->tempat_lahir ?? '') }}" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
                             placeholder="Kota Kelahiran">
                     </div>
@@ -162,6 +150,7 @@
                             Lahir</label>
                         <input type="date" name="tanggal_lahir" id="tanggal_lahir"
                             value="{{ old('tanggal_lahir', $user->tanggal_lahir ? $user->tanggal_lahir->format('Y-m-d') : '') }}"
+                            required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
                     </div>
 
@@ -171,13 +160,13 @@
                         <div class="flex items-center space-x-4 mt-2">
                             <label class="flex items-center">
                                 <input type="radio" name="jenis_kelamin" value="L"
-                                    {{ old('jenis_kelamin', $user->jenis_kelamin ?? '') == 'L' ? 'checked' : '' }}
+                                    {{ old('jenis_kelamin', $user->jenis_kelamin ?? '') == 'L' ? 'checked' : '' }} required
                                     class="text-blue-600 focus:ring-blue-500">
                                 <span class="ml-2 text-sm text-gray-700">Laki-laki</span>
                             </label>
                             <label class="flex items-center">
                                 <input type="radio" name="jenis_kelamin" value="P"
-                                    {{ old('jenis_kelamin', $user->jenis_kelamin ?? '') == 'P' ? 'checked' : '' }}
+                                    {{ old('jenis_kelamin', $user->jenis_kelamin ?? '') == 'P' ? 'checked' : '' }} required
                                     class="text-pink-600 focus:ring-pink-500">
                                 <span class="ml-2 text-sm text-gray-700">Perempuan</span>
                             </label>
@@ -189,7 +178,7 @@
                         <label for="no_telp" class="block text-sm font-medium text-gray-700 mb-1">No. Handphone /
                             WA</label>
                         <input type="text" name="no_telp" id="no_telp"
-                            value="{{ old('no_telp', $user->no_telp ?? '') }}"
+                            value="{{ old('no_telp', $user->no_telp ?? '') }}" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
                             placeholder="08xxxxxxxxxx">
                     </div>
@@ -199,7 +188,7 @@
                         <label for="nama_orang_tua" class="block text-sm font-medium text-gray-700 mb-1">Nama Wali / Orang
                             Tua</label>
                         <input type="text" name="nama_orang_tua" id="nama_orang_tua"
-                            value="{{ old('nama_orang_tua', $user->nama_orang_tua ?? '') }}"
+                            value="{{ old('nama_orang_tua', $user->nama_orang_tua ?? '') }}" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
                             placeholder="Nama Wali">
                     </div>
@@ -208,7 +197,7 @@
                     <div>
                         <label for="tingkatan" class="block text-sm font-medium text-gray-700 mb-1">Tingkatan
                             Sekolah</label>
-                        <select name="tingkatan" id="tingkatan"
+                        <select name="tingkatan" id="tingkatan" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
                             <option value="">Pilih Tingkatan</option>
                             <option value="SD"
@@ -217,7 +206,7 @@
                                 {{ old('tingkatan', $user->tingkatan ?? '') == 'SMP' ? 'selected' : '' }}>SMP / MTs
                             </option>
                             <option value="SMA"
-                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SMA' ? 'selected' : '' }}>SMA / SMK / MA
+                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SMA' ? 'selected' : '' }}>SMA / MA
                             </option>
                             <option value="KULIAH"
                                 {{ old('tingkatan', $user->tingkatan ?? '') == 'KULIAH' ? 'selected' : '' }}>Perguruan
@@ -228,17 +217,17 @@
                     <!-- Kelas -->
                     <div>
                         <label for="kelas" class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
-                        <input type="text" name="kelas" id="kelas"
-                            value="{{ old('kelas', $user->kelas ?? '') }}"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
-                            placeholder="Contoh: 1, 2, 3, 10, 11...">
+                        <select name="kelas" id="kelas" required
+                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
+                            <option value="">Pilih Tingkatan terlebih dahulu</option>
+                        </select>
                     </div>
 
                     <!-- Tingkatan Ngaji -->
                     <div>
                         <label for="tingkatan_ngaji" class="block text-sm font-medium text-gray-700 mb-1">Tingkatan
                             Mengaji</label>
-                        <select name="tingkatan_ngaji" id="tingkatan_ngaji"
+                        <select name="tingkatan_ngaji" id="tingkatan_ngaji" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
                             <option value="">Pilih Tingkatan Ngaji</option>
                             <option value="I Tsanawiyyah"
@@ -271,7 +260,7 @@
                     <!-- Alamat -->
                     <div class="col-span-1 md:col-span-2">
                         <label for="alamat" class="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap</label>
-                        <textarea name="alamat" id="alamat" rows="3"
+                        <textarea name="alamat" id="alamat" rows="3" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200"
                             placeholder="Alamat lengkap domisili santri">{{ old('alamat', $user->alamat ?? '') }}</textarea>
                     </div>
@@ -300,9 +289,72 @@
         document.addEventListener('DOMContentLoaded', function() {
             const roleSelect = document.getElementById('role');
             const santriFields = document.getElementById('santri-fields');
+            const tingkatanSelect = document.getElementById('tingkatan');
+            const kelasSelect = document.getElementById('kelas');
+            const selectedKelas = @json(old('kelas', $user->kelas ?? ''));
+            const santriRequiredSelectors = [
+                '#tahun_ajaran_masuk_id',
+                '#tempat_lahir',
+                '#tanggal_lahir',
+                'input[name="jenis_kelamin"]',
+                '#no_telp',
+                '#nama_orang_tua',
+                '#tingkatan',
+                '#kelas',
+                '#tingkatan_ngaji',
+                '#alamat',
+            ];
+
+            function toggleSantriRequired(isSantri) {
+                santriRequiredSelectors.forEach(function(selector) {
+                    document.querySelectorAll(selector).forEach(function(el) {
+                        el.required = isSantri;
+                    });
+                });
+            }
+
+            const kelasOptionsByTingkatan = {
+                SD: [
+                    '1 SD/MI', '2 SD/MI', '3 SD/MI',
+                    '4 SD/MI', '5 SD/MI', '6 SD/MI'
+                ],
+                SMP: ['1 SMP/MTs', '2 SMP/MTs', '3 SMP/MTs'],
+                SMA: ['1 SMA/MA', '2 SMA/MA', '3 SMA/MA'],
+                KULIAH: [
+                    'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4',
+                    'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'
+                ],
+            };
+
+            function renderKelasOptions() {
+                const tingkatan = tingkatanSelect.value;
+                const options = kelasOptionsByTingkatan[tingkatan] || [];
+                const currentValue = kelasSelect.value || selectedKelas;
+
+                kelasSelect.innerHTML = '';
+
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = options.length ? 'Pilih Kelas/Semester' :
+                    'Pilih Tingkatan terlebih dahulu';
+                kelasSelect.appendChild(placeholder);
+
+                options.forEach(function(item) {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    if (item === currentValue) {
+                        option.selected = true;
+                    }
+                    kelasSelect.appendChild(option);
+                });
+            }
 
             function toggleSantriFields() {
-                if (roleSelect.value === 'santri') {
+                const isSantri = roleSelect.value === 'santri';
+                toggleSantriRequired(isSantri);
+
+                if (isSantri) {
                     santriFields.classList.remove('hidden');
                     santriFields.classList.add('block');
                 } else {
@@ -312,9 +364,11 @@
             }
 
             roleSelect.addEventListener('change', toggleSantriFields);
+            tingkatanSelect.addEventListener('change', renderKelasOptions);
 
             // Initial check
             toggleSantriFields();
+            renderKelasOptions();
         });
     </script>
 @endsection

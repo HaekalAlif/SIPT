@@ -27,7 +27,8 @@
 
     <!-- Filter & Search -->
     <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <form action="{{ route('admin.kartu-pembayaran.index') }}" method="GET" class="flex flex-col md:flex-row gap-4">
+        <form action="{{ route('admin.kartu-pembayaran.index') }}" method="GET"
+            class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             <div class="flex-1">
                 <label for="santri" class="sr-only">Cari Santri</label>
                 <div class="relative">
@@ -50,9 +51,26 @@
                     <option value="">Semua Tahun Ajaran</option>
                     @foreach ($tahunAjarans as $ta)
                         <option value="{{ $ta->id }}" {{ request('tahun_ajaran') == $ta->id ? 'selected' : '' }}>
-                            {{ $ta->tahun_ajaran }} ({{ $ta->status == 'aktif' ? 'Aktif' : 'Non-aktif' }})
+                            {{ $ta->nama }}{{ $ta->is_active ? ' (Aktif)' : '' }}
                         </option>
                     @endforeach
+                </select>
+            </div>
+            <div>
+                <select name="tingkatan" id="tingkatan-filter"
+                    class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Tingkatan</option>
+                    @foreach ($tingkatanOptions as $tingkatan)
+                        <option value="{{ $tingkatan }}" {{ request('tingkatan') == $tingkatan ? 'selected' : '' }}>
+                            {{ $tingkatan }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <select name="kelas" id="kelas-filter"
+                    class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Kelas</option>
                 </select>
             </div>
             <button type="submit"
@@ -91,6 +109,13 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse ($kartuPembayarans as $kartu)
+                        @php
+                            $summary = $summaryByUser[$kartu->user_id] ?? [
+                                'total_tagihan_nominal' => 0,
+                                'total_sudah_dibayar' => 0,
+                                'total_sisa' => 0,
+                            ];
+                        @endphp
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {{ $kartu->nomor_kartu ?? '-' }}
@@ -105,24 +130,17 @@
                                         {{ $kartu->user->nama_santri ?? ($kartu->user->name ?? '-') }}</div>
                                 </div>
                             </td>
-                            @php
-                                $totalTagihan = $kartu->tagihan->sum('total');
-                                $totalBayar = $kartu->tagihan->flatMap->pembayaran
-                                    ->where('status', 'diterima')
-                                    ->sum('jumlah_bayar');
-                                $sisaTagihan = $kartu->tagihan->where('status', '!=', 'lunas')->sum('total');
-                            @endphp
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $kartu->tahunAjaran->nama ?? '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                Rp {{ number_format($totalTagihan, 0, ',', '.') }}
+                                Rp {{ number_format($summary['total_tagihan_nominal'], 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
-                                Rp {{ number_format($totalBayar, 0, ',', '.') }}
+                                Rp {{ number_format($summary['total_sudah_dibayar'], 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
-                                Rp {{ number_format($sisaTagihan, 0, ',', '.') }}
+                                Rp {{ number_format($summary['total_sisa'], 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
@@ -167,4 +185,35 @@
             {{ $kartuPembayarans->links() }}
         </div>
     </div>
+
+    <script>
+        const kelasOptionsByTingkatan = @json($kelasOptionsByTingkatan ?? []);
+        const tingkatanSelect = document.getElementById('tingkatan-filter');
+        const kelasSelect = document.getElementById('kelas-filter');
+        const selectedKelas = @json(request('kelas'));
+
+        function renderKelasOptions() {
+            if (!tingkatanSelect || !kelasSelect) return;
+            const tingkatan = tingkatanSelect.value;
+            const options = kelasOptionsByTingkatan[tingkatan] || [];
+
+            kelasSelect.innerHTML = '<option value="">Semua Kelas</option>';
+            options.forEach((kelas) => {
+                const option = document.createElement('option');
+                option.value = kelas;
+                option.textContent = kelas;
+                if (selectedKelas === kelas) {
+                    option.selected = true;
+                }
+                kelasSelect.appendChild(option);
+            });
+        }
+
+        tingkatanSelect?.addEventListener('change', () => {
+            kelasSelect.value = '';
+            renderKelasOptions();
+        });
+
+        renderKelasOptions();
+    </script>
 @endsection

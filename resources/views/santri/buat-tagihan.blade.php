@@ -94,48 +94,74 @@
                         </thead>
                         <tbody>
                             @if ($kategoriNama == 'syariah')
-                                @php $jenisTagihanSyariah = $kategori->jenisTagihan->where('is_bulanan', true)->first(); @endphp
-                                @if (!$jenisTagihanSyariah)
+                                @php
+                                    $jenisTagihanSyariah = $kategori->jenisTagihan->where('is_bulanan', true)->values();
+                                    $bulanList = [
+                                        'Juli',
+                                        'Agustus',
+                                        'September',
+                                        'Oktober',
+                                        'November',
+                                        'Desember',
+                                        'Januari',
+                                        'Februari',
+                                        'Maret',
+                                        'April',
+                                        'Mei',
+                                        'Juni',
+                                    ];
+                                @endphp
+                                @if ($jenisTagihanSyariah->isEmpty())
                                     <tr>
                                         <td colspan="4" class="py-8 text-center text-gray-400 text-sm">
                                             Tidak ada tagihan syariah yang tersedia untuk Anda saat ini.
                                         </td>
                                     </tr>
                                 @else
-                                    @foreach (['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'] as $bulan)
-                                        @php
-                                            $sudahBayar =
-                                                isset($paidBulanMap[$jenisTagihanSyariah->id]) &&
-                                                in_array($bulan, $paidBulanMap[$jenisTagihanSyariah->id]);
-                                        @endphp
-                                        <tr
-                                            class="border-b border-gray-200 {{ $sudahBayar ? 'opacity-60 bg-gray-50' : '' }}">
-                                            <td class="py-3 px-4">{{ $bulan }}</td>
-                                            <td class="py-3 px-4">Rp
-                                                {{ number_format($jenisTagihanSyariah->nominal, 0, ',', '.') }}</td>
-                                            <td class="py-3 px-4 text-center">
-                                                @if ($sudahBayar)
-                                                    <input type="checkbox" disabled checked
-                                                        class="w-5 h-5 border-gray-300 rounded">
-                                                @else
-                                                    <input type="checkbox"
-                                                        name="syariah_items[{{ $jenisTagihanSyariah->id }}][{{ $bulan }}]"
-                                                        value="1"
-                                                        class="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500">
-                                                @endif
-                                            </td>
-                                            <td class="py-3 px-4 text-center">
-                                                @if ($sudahBayar)
-                                                    <span
-                                                        class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold">SUDAH
-                                                        TERBAYAR</span>
-                                                @else
-                                                    <span
-                                                        class="bg-red-100 text-red-700 px-3 py-1 rounded text-sm font-semibold">BELUM
-                                                        TERBAYAR</span>
-                                                @endif
+                                    @foreach ($jenisTagihanSyariah as $jenisBulanan)
+                                        <tr class="bg-gray-100 border-y border-gray-300">
+                                            <td colspan="4" class="py-2 px-4 text-sm font-semibold text-gray-700">
+                                                {{ $jenisBulanan->nama_tagihan }}
+                                                <span class="ml-2 text-xs font-normal text-gray-500">(Rp
+                                                    {{ number_format($jenisBulanan->nominal, 0, ',', '.') }}/bulan)</span>
                                             </td>
                                         </tr>
+
+                                        @foreach ($bulanList as $bulan)
+                                            @php
+                                                $sudahBayar =
+                                                    isset($paidBulanMap[$jenisBulanan->id]) &&
+                                                    in_array($bulan, $paidBulanMap[$jenisBulanan->id]);
+                                            @endphp
+                                            <tr
+                                                class="border-b border-gray-200 {{ $sudahBayar ? 'opacity-60 bg-gray-50' : '' }}">
+                                                <td class="py-3 px-4">{{ $bulan }}</td>
+                                                <td class="py-3 px-4">Rp
+                                                    {{ number_format($jenisBulanan->nominal, 0, ',', '.') }}</td>
+                                                <td class="py-3 px-4 text-center">
+                                                    @if ($sudahBayar)
+                                                        <input type="checkbox" disabled checked
+                                                            class="w-5 h-5 border-gray-300 rounded">
+                                                    @else
+                                                        <input type="checkbox"
+                                                            name="syariah_items[{{ $jenisBulanan->id }}][{{ $bulan }}]"
+                                                            value="1"
+                                                            class="w-5 h-5 text-green-600 border-green-300 rounded focus:ring-green-500">
+                                                    @endif
+                                                </td>
+                                                <td class="py-3 px-4 text-center">
+                                                    @if ($sudahBayar)
+                                                        <span
+                                                            class="bg-green-600 text-white px-3 py-1 rounded text-sm font-semibold">SUDAH
+                                                            TERBAYAR</span>
+                                                    @else
+                                                        <span
+                                                            class="bg-red-100 text-red-700 px-3 py-1 rounded text-sm font-semibold">BELUM
+                                                            TERBAYAR</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
                                     @endforeach
                                 @endif
                             @else

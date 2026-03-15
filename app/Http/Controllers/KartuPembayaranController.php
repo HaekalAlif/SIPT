@@ -7,16 +7,37 @@ use App\Models\User;
 use App\Models\TahunAjaran;
 use App\Models\JenisTagihan;
 use App\Models\JenisTagihanDisabled;
+use App\Models\KategoriTagihan;
 use App\Models\Tagihan;
 use App\Models\TagihanDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class KartuPembayaranController extends Controller
 {
     public function index(Request $request)
     {
         $query = KartuPembayaran::with(['user', 'tahunAjaran', 'tagihan.pembayaran']);
+        $tingkatanOptions = User::where('role', User::ROLE_SANTRI)
+            ->whereNotNull('tingkatan')
+            ->distinct()
+            ->orderBy('tingkatan')
+            ->pluck('tingkatan');
+
+        $kelasPairs = User::where('role', User::ROLE_SANTRI)
+            ->whereNotNull('tingkatan')
+            ->whereNotNull('kelas')
+            ->select('tingkatan', 'kelas')
+            ->distinct()
+            ->orderBy('tingkatan')
+            ->orderBy('kelas')
+            ->get();
+
+        $kelasOptionsByTingkatan = $kelasPairs
+            ->groupBy('tingkatan')
+            ->map(fn($rows) => $rows->pluck('kelas')->values())
+            ->toArray();
 
         // Filter berdasarkan tahun ajaran
         if ($request->filled('tahun_ajaran')) {
@@ -30,10 +51,31 @@ class KartuPembayaranController extends Controller
             });
         }
 
-        $kartuPembayarans = $query->orderBy('created_at', 'desc')->paginate(20);
-        $tahunAjarans = TahunAjaran::all();
+        if ($request->filled('tingkatan')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('tingkatan', $request->tingkatan);
+            });
+        }
 
-        return view('admin.kartu-pembayaran.index', compact('kartuPembayarans', 'tahunAjarans'));
+        if ($request->filled('kelas')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('kelas', $request->kelas);
+            });
+        }
+
+        $kartuPembayarans = $query->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+        $tahunAjarans = TahunAjaran::orderByDesc('is_active')->orderByDesc('id')->get();
+        $summaryByUser = $this->buildSantriFinancialSummary(
+            $kartuPembayarans->getCollection()->pluck('user')->filter()
+        );
+
+        return view('admin.kartu-pembayaran.index', compact(
+            'kartuPembayarans',
+            'tahunAjarans',
+            'summaryByUser',
+            'tingkatanOptions',
+            'kelasOptionsByTingkatan'
+        ));
     }
 
     public function show($id)
@@ -78,6 +120,12 @@ class KartuPembayaranController extends Controller
             ->where('tahun_ajaran_id', $request->tahun_ajaran_id)
             ->first();
 
+        $santri = User::findOrFail($request->user_id);
+        $allowedJenisIds = JenisTagihan::applicableForUser($santri)
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->all();
+
         if ($existingKartu) {
             return back()->withInput()
                 ->with('error', 'Santri sudah memiliki kartu pembayaran untuk tahun ajaran ini!');
@@ -98,7 +146,9 @@ class KartuPembayaranController extends Controller
                 'nomor_kartu'     => $nomorKartu,
             ]);
 
-            $jenisIds = $request->jenis_tagihan_ids ?? [];
+            $jenisIds = array_filter($request->jenis_tagihan_ids ?? [], function ($id) use ($allowedJenisIds) {
+                return in_array((int) $id, $allowedJenisIds);
+            });
 
             // Filter out jenis tagihan yang dinonaktifkan admin untuk santri ini
             $disabledByAdmin = JenisTagihanDisabled::getDisabledIds(
@@ -283,5 +333,64 @@ class KartuPembayaranController extends Controller
         ])->findOrFail($id);
 
         return view('admin.kartu-pembayaran.cetak', compact('kartuPembayaran'));
+    }
+
+    private function buildSantriFinancialSummary(Collection $users): array
+    {
+        $summary = [];
+
+        foreach ($users as $user) {
+            if (!$user?->id) {
+                continue;
+            }
+
+            $totalTagihanNominal = 0;
+            $totalSudahDibayar = 0;
+
+            if ($user->tahun_ajaran_masuk_id) {
+                $tahunAjaranMasuk = TahunAjaran::find($user->tahun_ajaran_masuk_id);
+                if ($tahunAjaranMasuk) {
+                    $yearCount = TahunAjaran::where('id', '>=', $tahunAjaranMasuk->id)->count();
+
+                    $allKategori = KategoriTagihan::with([
+                        'jenisTagihan' => fn($q) => $q->applicableForUser($user),
+                    ])->get();
+
+                    foreach ($allKategori as $kategori) {
+                        $katNama = strtolower($kategori->nama);
+                        $isRegistrasi = str_contains($katNama, 'registrasi');
+                        $isSyariah = str_contains($katNama, 'syariah');
+
+                        foreach ($kategori->jenisTagihan as $jenis) {
+                            if ($isRegistrasi) {
+                                $totalTagihanNominal += (float) $jenis->nominal;
+                            } elseif ($isSyariah && $jenis->is_bulanan) {
+                                $totalTagihanNominal += (float) $jenis->nominal * 12 * $yearCount;
+                            } else {
+                                $totalTagihanNominal += (float) $jenis->nominal * $yearCount;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $allUserTagihan = Tagihan::whereHas('kartuPembayaran', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->get();
+
+            foreach ($allUserTagihan as $t) {
+                if ($t->status === Tagihan::STATUS_LUNAS) {
+                    $totalSudahDibayar += (float) $t->total;
+                }
+            }
+
+            $summary[$user->id] = [
+                'total_tagihan_nominal' => $totalTagihanNominal,
+                'total_sudah_dibayar' => $totalSudahDibayar,
+                'total_sisa' => max(0, $totalTagihanNominal - $totalSudahDibayar),
+            ];
+        }
+
+        return $summary;
     }
 }

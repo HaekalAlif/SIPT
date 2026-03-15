@@ -58,7 +58,7 @@
                                 <span class="text-red-500 text-xs mt-2">{{ $message }}</span>
                             @enderror
                         </div>
-                        <!-- Nis Santri (Email) -->
+                        <!-- Santri (Email) -->
                         <div class="mb-4">
                             <label for="email" class="block font-semibold text-[#222] mb-1">Email santri</label>
                             <input id="email" name="email" type="email" required autocomplete="username"

@@ -34,10 +34,6 @@
 
             <div class="space-y-3">
                 <div class="flex justify-between border-b pb-2">
-                    <span class="text-gray-600 text-sm">NIS</span>
-                    <span class="font-medium text-gray-800">{{ $santri->nis ?? '-' }}</span>
-                </div>
-                <div class="flex justify-between border-b pb-2">
                     <span class="text-gray-600 text-sm">Kelas / Tingkatan</span>
                     <span class="font-medium text-gray-800">
                         {{ $santri->kelas ?? '-' }}{{ $santri->tingkatan ? ' - ' . $santri->tingkatan : '' }}

@@ -26,17 +26,17 @@
                         <p class="font-medium text-gray-800">{{ $tagihan->kartuPembayaran->user->nama_santri ?? '-' }}</p>
                     </div>
                     <div>
-                        <p class="text-gray-500">NIS:</p>
-                        <p class="font-medium text-gray-800">{{ $tagihan->kartuPembayaran->user->nis ?? '-' }}</p>
+                        <p class="text-gray-500">Kelas:</p>
+                        <p class="font-medium text-gray-800">{{ $tagihan->kartuPembayaran->user->kelas ?? '-' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-500">Tahun Ajaran:</p>
                         <p class="font-medium text-gray-800">
-                            {{ $tagihan->kartuPembayaran->tahunAjaran->tahun_ajaran ?? '-' }}</p>
+                            {{ $tagihan->kartuPembayaran->tahunAjaran->nama ?? '-' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-500">No. Kartu:</p>
-                        <p class="font-medium text-gray-800">{{ $tagihan->kartuPembayaran->no_kartu ?? '-' }}</p>
+                        <p class="font-medium text-gray-800">{{ $tagihan->kartuPembayaran->nomor_kartu ?? '-' }}</p>
                     </div>
                 </div>
             </div>
@@ -46,12 +46,12 @@
                 <div class="space-y-3 text-sm">
                     <div class="flex justify-between">
                         <p class="text-gray-500">Total Tagihan:</p>
-                        <p class="font-bold text-gray-800">Rp {{ number_format($tagihan->total_tagihan, 0, ',', '.') }}</p>
+                        <p class="font-bold text-gray-800">Rp {{ number_format($tagihan->total, 0, ',', '.') }}</p>
                     </div>
                     <div class="flex justify-between">
                         <p class="text-gray-500">Jenis:</p>
                         <p class="font-medium text-gray-800">
-                            {{ $tagihan->tagihanDetails->count() > 0 ? $tagihan->tagihanDetails[0]->jenisTagihan->nama : 'N/A' }}
+                            {{ $tagihan->tagihanDetails->count() > 0 ? $tagihan->tagihanDetails[0]->jenisTagihan->nama_tagihan : 'N/A' }}
                         </p>
                     </div>
                     <div class="flex justify-between">
@@ -66,10 +66,12 @@
                     </div>
                     <div class="mt-4 pt-3 border-t border-gray-100">
                         @if ($tagihan->status !== 'lunas')
-                            <a href="#"
+                            <a href="{{ route('admin.manual-payment.show', $tagihan->kartuPembayaran->user_id) }}"
                                 class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">
-                                Catat Pembayaran Manual
+                                Buka Halaman Bayar Manual
                             </a>
+                            <p class="text-xs text-gray-500 mt-2">Pembayaran manual dengan breakdown per bulan/item tersedia
+                                di halaman khusus.</p>
                         @endif
                     </div>
                 </div>
@@ -99,10 +101,10 @@
                             @foreach ($tagihan->tagihanDetails as $detail)
                                 <tr>
                                     <td class="px-4 py-3 text-sm text-gray-900">
-                                        {{ $detail->jenisTagihan->nama ?? 'Item Hapus' }}
+                                        {{ $detail->jenisTagihan->nama_tagihan ?? 'Item Hapus' }}
                                     </td>
                                     <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                                        Rp {{ number_format($detail->jumlah, 0, ',', '.') }}
+                                        Rp {{ number_format($detail->nominal, 0, ',', '.') }}
                                     </td>
                                     <td class="px-4 py-3 text-sm text-center">
                                         <form
@@ -120,7 +122,7 @@
                             <tr class="bg-gray-50">
                                 <td class="px-4 py-3 text-sm font-bold text-gray-800 text-right">Total Tagihan</td>
                                 <td class="px-4 py-3 text-sm font-bold text-gray-900 text-right">
-                                    Rp {{ number_format($tagihan->total_tagihan, 0, ',', '.') }}
+                                    Rp {{ number_format($tagihan->total, 0, ',', '.') }}
                                 </td>
                                 <td></td>
                             </tr>
@@ -138,8 +140,7 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs text-gray-500">Tanggal</th>
-                                    <th class="px-4 py-2 text-left text-xs text-gray-500">No. Ref</th>
-                                    <th class="px-4 py-2 text-left text-xs text-gray-500">Metode</th>
+                                    <th class="px-4 py-2 text-left text-xs text-gray-500">Catatan</th>
                                     <th class="px-4 py-2 text-right text-xs text-gray-500">Jumlah</th>
                                     <th class="px-4 py-2 text-center text-xs text-gray-500">Status</th>
                                 </tr>
@@ -151,10 +152,7 @@
                                             {{ \Carbon\Carbon::parse($bayar->tanggal_bayar)->format('d M Y') }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-500">
-                                            {{ $bayar->no_referensi ?? '-' }}
-                                        </td>
-                                        <td class="px-4 py-3 text-sm text-gray-900">
-                                            {{ ucfirst($bayar->metode_pembayaran) }}
+                                            {{ $bayar->catatan ?: '-' }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium">
                                             Rp {{ number_format($bayar->jumlah_bayar, 0, ',', '.') }}

@@ -38,7 +38,6 @@
                                     <option value="{{ $santri->id }}"
                                         data-tingkatan-ngaji="{{ $santri->tingkatan_ngaji ?? '' }}"
                                         {{ old('user_id') == $santri->id ? 'selected' : '' }}>
-                                        {{ $santri->nama_santri }} ({{ $santri->nis ?? '-' }})
                                         {{ $santri->tingkatan_ngaji ? ' — ' . $santri->tingkatan_ngaji : '' }}
                                     </option>
                                 @endforeach

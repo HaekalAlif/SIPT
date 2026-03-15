@@ -1,10 +1,11 @@
 @extends('layouts.admin')
 
 @section('content')
-    <div x-data="{ openModal: false, editMode: false, item: {} }">
+    <div x-data="{ openModal: false, editMode: false, item: { kategori_id: '', nama_tagihan: '', nominal: '', is_bulanan: false, target_scope: 'all', target_value: '' } }">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-gray-800">Data Jenis Tagihan</h1>
-            <button @click="openModal = true; editMode = false; item = {}"
+            <button
+                @click="openModal = true; editMode = false; item = { kategori_id: '', nama_tagihan: '', nominal: '', is_bulanan: false, target_scope: 'all', target_value: '' }"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
@@ -30,6 +31,9 @@
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Nominal (Rp)</th>
                             <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Berlaku Untuk</th>
+                            <th scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi
                             </th>
                         </tr>
@@ -46,10 +50,23 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     Rp {{ number_format($jenis->nominal, 0, ',', '.') }}
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    @if (($jenis->target_scope ?? 'all') === 'tingkatan')
+                                        Tingkatan: {{ $jenis->target_value }}
+                                    @elseif(($jenis->target_scope ?? 'all') === 'ngaji')
+                                        Tingkatan Ngaji: {{ $jenis->target_value }}
+                                    @else
+                                        Semua Jenjang
+                                    @endif
+                                    @if ($jenis->is_bulanan)
+                                        <span
+                                            class="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Bulanan</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-2">
                                         <button
-                                            @click="openModal = true; editMode = true; item = { id: {{ $jenis->id }}, kategori_id: '{{ $jenis->kategori_id }}', nama_tagihan: '{{ $jenis->nama_tagihan }}', nominal: {{ $jenis->nominal }} }"
+                                            @click="openModal = true; editMode = true; item = { id: {{ $jenis->id }}, kategori_id: '{{ $jenis->kategori_id }}', nama_tagihan: @js($jenis->nama_tagihan), nominal: {{ $jenis->nominal }}, is_bulanan: {{ $jenis->is_bulanan ? 'true' : 'false' }}, target_scope: @js($jenis->target_scope ?? 'all'), target_value: @js($jenis->target_value ?? '') }"
                                             class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg p-2 transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor">
@@ -76,7 +93,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">Belum ada data jenis tagihan.
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">Belum ada data jenis tagihan.
                                 </td>
                             </tr>
                         @endforelse
@@ -140,6 +157,56 @@
                                     <input type="number" name="nominal" id="nominal" x-model="item.nominal" required
                                         class="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
                                         placeholder="Contoh: 150000">
+                                </div>
+
+                                <div>
+                                    <label class="inline-flex items-center">
+                                        <input type="hidden" name="is_bulanan" value="0">
+                                        <input type="checkbox" name="is_bulanan" value="1"
+                                            x-model="item.is_bulanan"
+                                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span class="ml-2 text-sm text-gray-700">Tagihan Bulanan</span>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label for="target_scope" class="block text-sm font-medium text-gray-700">Berlaku
+                                        Untuk</label>
+                                    <select name="target_scope" id="target_scope" x-model="item.target_scope" required
+                                        @change="if (item.target_scope === 'all') item.target_value = ''"
+                                        class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option value="all">Semua Jenjang</option>
+                                        <option value="tingkatan">Per Tingkatan Sekolah</option>
+                                        <option value="ngaji">Per Tingkatan Ngaji</option>
+                                    </select>
+                                </div>
+
+                                <div x-show="item.target_scope === 'tingkatan'" x-cloak>
+                                    <label for="target_tingkatan" class="block text-sm font-medium text-gray-700">Pilih
+                                        Tingkatan</label>
+                                    <select id="target_tingkatan" name="target_value" x-model="item.target_value"
+                                        :disabled="item.target_scope !== 'tingkatan'"
+                                        :required="item.target_scope === 'tingkatan'"
+                                        class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option value="">Pilih Tingkatan</option>
+                                        @foreach ($tingkatanOptions as $tingkatan)
+                                            <option value="{{ $tingkatan }}">{{ $tingkatan }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div x-show="item.target_scope === 'ngaji'" x-cloak>
+                                    <label for="target_ngaji" class="block text-sm font-medium text-gray-700">Pilih
+                                        Tingkatan Ngaji</label>
+                                    <select id="target_ngaji" name="target_value" x-model="item.target_value"
+                                        :disabled="item.target_scope !== 'ngaji'"
+                                        :required="item.target_scope === 'ngaji'"
+                                        class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option value="">Pilih Tingkatan Ngaji</option>
+                                        @foreach ($tingkatanNgajiOptions as $ngaji)
+                                            <option value="{{ $ngaji }}">{{ $ngaji }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                         </div>

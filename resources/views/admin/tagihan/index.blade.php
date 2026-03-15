@@ -86,14 +86,14 @@
                                     </div>
                                 </div>
                                 <div class="text-xs text-gray-500">
-                                    {{ $tagihan->kartuPembayaran->tahunAjaran->tahun_ajaran ?? '-' }}
+                                    {{ $tagihan->kartuPembayaran->tahunAjaran->nama ?? '-' }}
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ $tagihan->nama ?? 'Tagihan #' . $tagihan->id }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                Rp {{ number_format($tagihan->total_tagihan, 0, ',', '.') }}
+                                Rp {{ number_format($tagihan->total, 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span
@@ -105,7 +105,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $tagihan->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($tagihan->tanggal_jatuh_tempo)->format('d M Y') : '-' }}
+                                -
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">

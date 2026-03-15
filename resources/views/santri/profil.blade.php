@@ -45,7 +45,6 @@
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="font-bold text-gray-800 truncate">{{ $user->nama_santri }}</p>
-                    <p class="text-xs text-gray-400">NIS: {{ $user->nis ?? '-' }}</p>
                 </div>
                 <label for="foto_profile"
                     class="flex-shrink-0 text-xs text-green-600 font-semibold cursor-pointer hover:text-green-800 border border-green-300 rounded-lg px-3 py-1.5">
@@ -168,12 +167,6 @@
                     {{-- Info Akun --}}
                     <div class="bg-white rounded-xl shadow p-5 space-y-3">
                         <p class="font-bold text-gray-700 text-xs uppercase tracking-wide border-b pb-2">Info Akun</p>
-
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">NIS</label>
-                            <input type="text" value="{{ $user->nis ?? '-' }}" disabled
-                                class="w-full border border-gray-100 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 cursor-not-allowed">
-                        </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Email</label>
                             <input type="text" value="{{ $user->email }}" disabled

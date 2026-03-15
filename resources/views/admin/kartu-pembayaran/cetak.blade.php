@@ -32,131 +32,135 @@
         <div class="border-b-2 border-gray-800 pb-4 mb-6 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <!-- Logo Place Holder -->
-                <div
-                    class="w-16 h-16 bg-gray-200 flex items-center justify-center rounded-full text-gray-500 font-bold text-xs">
-                    LOGO</div>
-                <div>
-                    <h1 class="text-2xl font-bold uppercase tracking-wide">Pondok Pesantren Al-Hidayah</h1>
-                    <p class="text-sm text-gray-600">Jl. Raya Pesantren No. 123, Kota Santri</p>
-                    <p class="text-sm text-gray-600">Telp: (021) 1234567 • Email: admin@ponpes-alhidayah.id</p>
-                </div>
-            </div>
-            <div class="text-right">
-                <h2 class="text-xl font-bold text-gray-800 uppercase border-2 border-gray-800 px-4 py-1 inline-block">
-                    Kartu Pembayaran</h2>
-            </div>
-        </div>
-
-        <!-- Student Info -->
-        <div class="mb-6 grid grid-cols-2 gap-4 text-sm">
-            <div>
-                <table class="w-full">
-                    <tr>
-                        <td class="font-bold py-1 w-24">Nama</td>
-                        <td class="py-1">: {{ $kartuPembayaran->user->name }}</td>
-                    </tr>
-                    <tr>
-                        <td class="font-bold py-1">NISN</td>
-                        <td class="py-1">: {{ $kartuPembayaran->user->nisn ?? '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="font-bold py-1">Kelas</td>
-                        <td class="py-1">: {{ $kartuPembayaran->user->kelas ?? '-' }} -
-                            {{ $kartuPembayaran->user->tingkatan ?? '-' }}</td>
-                    </tr>
-                </table>
-            </div>
-            <div>
-                <table class="w-full">
-                    <tr>
-                        <td class="font-bold py-1 w-32">No. Kartu</td>
-                        <td class="py-1">: {{ $kartuPembayaran->nomor_kartu }}</td>
-                    </tr>
-                    <tr>
-                        <td class="font-bold py-1">Tahun Ajaran</td>
-                        <td class="py-1">: {{ $kartuPembayaran->tahunAjaran->tahun_ajaran }}
-                            ({{ $kartuPembayaran->tahunAjaran->semester }})</td>
-                    </tr>
-                </table>
+                <td style="width:70px; padding:6px 10px; {{ $vtop }}">
+                    <img src="{{ public_path('logo/logo.png') }}" alt="Logo"
+                        style="height:60px; width:60px; object-fit:contain;"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                    <div
+                        style="display:none; height:60px; width:60px; border:1px solid #000; text-align:center; font-size:9px; line-height:60px;">
+                        LOGO</div>
+                </td>
+                <h1 class="text-2xl font-bold uppercase tracking-wide">Pondok Pesantren Al-Hidayah</h1>
+                <p class="text-sm text-gray-600">Jl. Raya Pesantren No. 123, Kota Santri</p>
+                <p class="text-sm text-gray-600">Telp: (021) 1234567 • Email: admin@ponpes-alhidayah.id</p>
             </div>
         </div>
+        <div class="text-right">
+            <h2 class="text-xl font-bold text-gray-800 uppercase border-2 border-gray-800 px-4 py-1 inline-block">
+                Kartu Pembayaran</h2>
+        </div>
+    </div>
 
-        <!-- Payment Table -->
-        <div class="mb-8">
-            <table class="w-full border-collapse border border-gray-800 text-sm">
-                <thead>
-                    <tr class="bg-gray-100 text-center">
-                        <th class="border border-gray-800 p-2 w-12">No</th>
-                        <th class="border border-gray-800 p-2">Jenis Pembayaran / Bulan</th>
-                        <th class="border border-gray-800 p-2 w-32">Nominal</th>
-                        <th class="border border-gray-800 p-2 w-32">Tanggal Bayar</th>
-                        <th class="border border-gray-800 p-2 w-24">Status</th>
-                        <th class="border border-gray-800 p-2 w-24">Paraf</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $no = 1; @endphp
-                    @foreach ($kartuPembayaran->tagihan as $tagihan)
-                        @foreach ($tagihan->tagihanDetails as $detail)
-                            <tr>
-                                <td class="border border-gray-800 p-2 text-center">{{ $no++ }}</td>
-                                <td class="border border-gray-800 p-2">
-                                    {{ $detail->jenisTagihan->nama ?? 'Tagihan' }}
-                                    @if ($detail->bulan)
-                                        <span
-                                            class="font-semibold">({{ \Carbon\Carbon::parse($detail->bulan)->translatedFormat('F') }})</span>
-                                    @endif
-                                    <div class="text-xs text-gray-500 italic mt-1">#Inv-{{ $tagihan->id }}</div>
-                                </td>
-                                <td class="border border-gray-800 p-2 text-right">
-                                    Rp {{ number_format($detail->nominal, 0, ',', '.') }}
-                                </td>
-                                <td class="border border-gray-800 p-2 text-center">
-                                    @if ($tagihan->status == 'lunas')
-                                        {{ $tagihan->updated_at->format('d/m/Y') }}
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-                                <td class="border border-gray-800 p-2 text-center font-bold">
-                                    @if ($tagihan->status == 'lunas')
-                                        <span class="text-green-800">LUNAS</span>
-                                    @elseif($tagihan->status == 'menunggu_verifikasi')
-                                        <span class="text-yellow-700 text-xs">MENUNGGU</span>
-                                    @elseif($tagihan->status == 'belum_bayar')
-                                        <span class="text-red-700 text-xs">BELUM</span>
-                                    @else
-                                        <span class="text-gray-600 text-xs">{{ strtoupper($tagihan->status) }}</span>
-                                    @endif
-                                </td>
-                                <td class="border border-gray-800 p-2"></td> <!-- Empty for manual paraf -->
-                            </tr>
-                        @endforeach
-                    @endforeach
-
-                    <!-- Filler rows if empty -->
-                    @if ($kartuPembayaran->tagihan->count() == 0)
-                        <tr>
-                            <td colspan="6" class="border border-gray-800 p-4 text-center text-gray-500 italic">Belum
-                                ada data tagihan.</td>
-                        </tr>
-                    @endif
-                </tbody>
+    <!-- Student Info -->
+    <div class="mb-6 grid grid-cols-2 gap-4 text-sm">
+        <div>
+            <table class="w-full">
+                <tr>
+                    <td class="font-bold py-1 w-24">Nama</td>
+                    <td class="py-1">: {{ $kartuPembayaran->user->name }}</td>
+                </tr>
+                <tr>
+                    <td class="font-bold py-1">No. HP</td>
+                    <td class="py-1">: {{ $kartuPembayaran->user->no_telp ?? '-' }}</td>
+                </tr>
+                <tr>
+                    <td class="font-bold py-1">Kelas</td>
+                    <td class="py-1">: {{ $kartuPembayaran->user->kelas ?? '-' }} -
+                        {{ $kartuPembayaran->user->tingkatan ?? '-' }}</td>
+                </tr>
             </table>
         </div>
-
-        <!-- Signature -->
-        <div class="flex justify-end mt-12 pr-12">
-            <div class="text-center w-48">
-                <p class="mb-16">Bendahara Pesantren,</p>
-                <p class="font-bold underline decoration-dotted">{{ Auth::user()->name }}</p>
-            </div>
+        <div>
+            <table class="w-full">
+                <tr>
+                    <td class="font-bold py-1 w-32">No. Kartu</td>
+                    <td class="py-1">: {{ $kartuPembayaran->nomor_kartu }}</td>
+                </tr>
+                <tr>
+                    <td class="font-bold py-1">Tahun Ajaran</td>
+                    <td class="py-1">: {{ $kartuPembayaran->tahunAjaran->tahun_ajaran }}
+                        ({{ $kartuPembayaran->tahunAjaran->semester }})</td>
+                </tr>
+            </table>
         </div>
+    </div>
 
-        <!-- Footer -->
-        <div class="mt-8 border-t border-gray-300 pt-2 text-center text-xs text-gray-500">
-            Dicetak pada: {{ now()->format('d F Y H:i') }}
+    <!-- Payment Table -->
+    <div class="mb-8">
+        <table class="w-full border-collapse border border-gray-800 text-sm">
+            <thead>
+                <tr class="bg-gray-100 text-center">
+                    <th class="border border-gray-800 p-2 w-12">No</th>
+                    <th class="border border-gray-800 p-2">Jenis Pembayaran / Bulan</th>
+                    <th class="border border-gray-800 p-2 w-32">Nominal</th>
+                    <th class="border border-gray-800 p-2 w-32">Tanggal Bayar</th>
+                    <th class="border border-gray-800 p-2 w-24">Status</th>
+                    <th class="border border-gray-800 p-2 w-24">Paraf</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php $no = 1; @endphp
+                @foreach ($kartuPembayaran->tagihan as $tagihan)
+                    @foreach ($tagihan->tagihanDetails as $detail)
+                        <tr>
+                            <td class="border border-gray-800 p-2 text-center">{{ $no++ }}</td>
+                            <td class="border border-gray-800 p-2">
+                                {{ $detail->jenisTagihan->nama ?? 'Tagihan' }}
+                                @if ($detail->bulan)
+                                    <span
+                                        class="font-semibold">({{ \Carbon\Carbon::parse($detail->bulan)->translatedFormat('F') }})</span>
+                                @endif
+                                <div class="text-xs text-gray-500 italic mt-1">#Inv-{{ $tagihan->id }}</div>
+                            </td>
+                            <td class="border border-gray-800 p-2 text-right">
+                                Rp {{ number_format($detail->nominal, 0, ',', '.') }}
+                            </td>
+                            <td class="border border-gray-800 p-2 text-center">
+                                @if ($tagihan->status == 'lunas')
+                                    {{ $tagihan->updated_at->format('d/m/Y') }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td class="border border-gray-800 p-2 text-center font-bold">
+                                @if ($tagihan->status == 'lunas')
+                                    <span class="text-green-800">LUNAS</span>
+                                @elseif($tagihan->status == 'menunggu_verifikasi')
+                                    <span class="text-yellow-700 text-xs">MENUNGGU</span>
+                                @elseif($tagihan->status == 'belum_bayar')
+                                    <span class="text-red-700 text-xs">BELUM</span>
+                                @else
+                                    <span class="text-gray-600 text-xs">{{ strtoupper($tagihan->status) }}</span>
+                                @endif
+                            </td>
+                            <td class="border border-gray-800 p-2"></td> <!-- Empty for manual paraf -->
+                        </tr>
+                    @endforeach
+                @endforeach
+
+                <!-- Filler rows if empty -->
+                @if ($kartuPembayaran->tagihan->count() == 0)
+                    <tr>
+                        <td colspan="6" class="border border-gray-800 p-4 text-center text-gray-500 italic">Belum
+                            ada data tagihan.</td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Signature -->
+    <div class="flex justify-end mt-12 pr-12">
+        <div class="text-center w-48">
+            <p class="mb-16">Bendahara Pesantren,</p>
+            <p class="font-bold underline decoration-dotted">{{ Auth::user()->name }}</p>
         </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 border-t border-gray-300 pt-2 text-center text-xs text-gray-500">
+        Dicetak pada: {{ now()->format('d F Y H:i') }}
+    </div>
 
     </div>
 

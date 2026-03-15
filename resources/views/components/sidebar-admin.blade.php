@@ -55,6 +55,20 @@
             <span>Master Tagihan</span>
         </a>
 
+        <!-- Bayar Manual -->
+        <a href="{{ route('admin.manual-payment.index') }}"
+            class="flex items-center gap-3 px-3 py-2 rounded {{ request()->routeIs('admin.manual-payment*') ? 'bg-green-700 text-green-200' : 'hover:bg-green-700' }} transition">
+            <i class="fa fa-money-bill-wave w-5"></i>
+            <span>Bayar Manual</span>
+        </a>
+
+        <!-- Rekap Per Kelas -->
+        <a href="{{ route('admin.laporan-rekap-kelas') }}"
+            class="flex items-center gap-3 px-3 py-2 rounded {{ request()->routeIs('admin.laporan-rekap-kelas*') ? 'bg-green-700 text-green-200' : 'hover:bg-green-700' }} transition">
+            <i class="fa fa-table w-5"></i>
+            <span>Rekap Per Kelas</span>
+        </a>
+
         <!-- Verifikasi Pembayaran -->
         <a href="{{ route('admin.verifikasi-pembayaran') }}"
             class="flex items-center gap-3 px-3 py-2 rounded {{ request()->routeIs('admin.verifikasi-pembayaran*') ? 'bg-green-700 text-green-200' : 'hover:bg-green-700' }} transition">

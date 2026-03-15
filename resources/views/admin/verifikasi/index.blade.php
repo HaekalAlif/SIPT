@@ -5,6 +5,50 @@
         <h1 class="text-2xl font-bold text-gray-800">Verifikasi Pembayaran</h1>
     </div>
 
+    <div class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <form action="{{ route('admin.verifikasi-pembayaran') }}" method="GET"
+            class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div>
+                <input type="text" name="search" value="{{ request('search') }}"
+                    class="block w-full py-2 px-3 border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:border-blue-300 focus:ring focus:ring-blue-200 sm:text-sm"
+                    placeholder="Cari nama santri...">
+            </div>
+            <div>
+                <select name="tahun_ajaran_id"
+                    class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Tahun Ajaran</option>
+                    @foreach ($tahunAjarans as $ta)
+                        <option value="{{ $ta->id }}"
+                            {{ (string) request('tahun_ajaran_id') === (string) $ta->id ? 'selected' : '' }}>
+                            {{ $ta->nama }}{{ $ta->is_active ? ' (Aktif)' : '' }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <select name="tingkatan" id="tingkatan-filter"
+                    class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Tingkatan</option>
+                    @foreach ($tingkatanOptions as $tingkatan)
+                        <option value="{{ $tingkatan }}" {{ request('tingkatan') == $tingkatan ? 'selected' : '' }}>
+                            {{ $tingkatan }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <select name="kelas" id="kelas-filter"
+                    class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Kelas</option>
+                </select>
+            </div>
+            <button type="submit"
+                class="bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                Filter
+            </button>
+        </form>
+    </div>
+
     <!-- Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
@@ -45,8 +89,7 @@
                                     <div>
                                         <div class="text-sm font-medium text-gray-900">
                                             {{ $p->tagihan->kartuPembayaran->user->nama_santri ?? '-' }}</div>
-                                        <div class="text-xs text-gray-500">
-                                            {{ $p->tagihan->kartuPembayaran->user->nis ?? '' }}</div>
+
                                     </div>
                                 </div>
                             </td>
@@ -103,4 +146,35 @@
             {{ $pembayarans->links() }}
         </div>
     </div>
+
+    <script>
+        const kelasOptionsByTingkatan = @json($kelasOptionsByTingkatan ?? []);
+        const tingkatanSelect = document.getElementById('tingkatan-filter');
+        const kelasSelect = document.getElementById('kelas-filter');
+        const selectedKelas = @json(request('kelas'));
+
+        function renderKelasOptions() {
+            if (!tingkatanSelect || !kelasSelect) return;
+            const tingkatan = tingkatanSelect.value;
+            const options = kelasOptionsByTingkatan[tingkatan] || [];
+
+            kelasSelect.innerHTML = '<option value="">Semua Kelas</option>';
+            options.forEach((kelas) => {
+                const option = document.createElement('option');
+                option.value = kelas;
+                option.textContent = kelas;
+                if (selectedKelas === kelas) {
+                    option.selected = true;
+                }
+                kelasSelect.appendChild(option);
+            });
+        }
+
+        tingkatanSelect?.addEventListener('change', () => {
+            kelasSelect.value = '';
+            renderKelasOptions();
+        });
+
+        renderKelasOptions();
+    </script>
 @endsection
