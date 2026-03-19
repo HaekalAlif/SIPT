@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             KategoriTagihanSeeder::class,
             JenisTagihanSeeder::class,
             UserSeeder::class,
+            MetodePembayaranSeeder::class,
         ]);
     }
 }

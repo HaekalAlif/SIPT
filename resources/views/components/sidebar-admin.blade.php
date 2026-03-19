@@ -107,6 +107,23 @@
                 </a>
             </div>
         </div>
+
+        <!-- Setting Dropdown -->
+        <div class="space-y-2">
+            <div class="flex items-center gap-3 px-3 py-2 rounded hover:bg-green-700 transition cursor-pointer"
+                onclick="toggleSubmenu('setting')">
+                <i class="fa fa-cog w-5"></i>
+                <span class="flex-1">Setting</span>
+                <i id="chevron-setting" class="fa fa-chevron-down text-xs transition-transform"></i>
+            </div>
+            <div id="submenu-setting" class="ml-8 space-y-1 hidden">
+                <a href="{{ route('admin.settings.metode-pembayaran') }}"
+                    class="flex items-center gap-2 px-3 py-1 text-sm {{ request()->routeIs('admin.settings.metode-pembayaran*') ? 'text-white bg-green-600 rounded' : 'text-green-200 hover:text-white' }} transition">
+                    <i class="fa fa-angle-right text-xs"></i>
+                    <span>Metode Pembayaran</span>
+                </a>
+            </div>
+        </div>
     </nav>
 
     <!-- Logout at Bottom -->

@@ -9,14 +9,29 @@
             <h2 class="text-base font-bold text-gray-800 px-5 pt-4 pb-2 border-b-2 border-green-600">
                 Nomor Rekening Tujuan Pembayaran
             </h2>
+            @php
+                $metodeAktif = ($metodePembayaranList ?? collect())->first();
+                $logoPath = $metodeAktif?->logo_path;
+                $logoUrl = null;
+                if ($logoPath) {
+                    $logoUrl =
+                        str_starts_with($logoPath, 'http://') ||
+                        str_starts_with($logoPath, 'https://') ||
+                        str_starts_with($logoPath, '/')
+                            ? $logoPath
+                            : Storage::url($logoPath);
+                }
+            @endphp
             <div class="flex items-center justify-between px-5 py-4">
                 <div class="space-y-1.5 text-sm text-gray-700">
-                    <p>🏦 &nbsp;<strong>Bank BRI</strong></p>
-                    <p>🗒️ &nbsp;Nomor Rekening: <strong>1234-5678-9012-3456</strong></p>
-                    <p>👤 &nbsp;Atas Nama: <strong>Siti Mutoharoh, S.E</strong></p>
+                    <p>🏦 &nbsp;<strong>{{ $metodeAktif?->nama_bank ?? '-' }}</strong></p>
+                    <p>🗒️ &nbsp;Nomor Rekening: <strong>{{ $metodeAktif?->nomor_rekening ?? '-' }}</strong></p>
+                    <p>👤 &nbsp;Atas Nama: <strong>{{ $metodeAktif?->atas_nama ?? '-' }}</strong></p>
                 </div>
-                <img src="/images/bri.png" alt="Bank BRI"
-                    class="h-20 object-contain rounded-lg">
+                @if ($logoUrl)
+                    <img src="{{ $logoUrl }}" alt="{{ $metodeAktif?->nama_bank ?? 'Metode Pembayaran' }}"
+                        class="h-20 object-contain rounded-lg">
+                @endif
             </div>
         </div>
 
@@ -39,7 +54,8 @@
                 <!-- Tahun Ajaran Selector -->
                 @if ($tahunAjaranList->count() > 1)
                     <div class="bg-green-600 rounded-lg p-3">
-                        <form action="{{ route('santri.tagihan-pembayaran') }}" method="GET" class="flex items-center gap-3">
+                        <form action="{{ route('santri.tagihan-pembayaran') }}" method="GET"
+                            class="flex items-center gap-3">
                             @if ($filterKategori)
                                 <input type="hidden" name="kategori" value="{{ $filterKategori }}">
                             @endif

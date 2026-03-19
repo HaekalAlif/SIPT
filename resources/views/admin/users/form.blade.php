@@ -149,8 +149,7 @@
                         <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700 mb-1">Tanggal
                             Lahir</label>
                         <input type="date" name="tanggal_lahir" id="tanggal_lahir"
-                            value="{{ old('tanggal_lahir', $user->tanggal_lahir ? $user->tanggal_lahir->format('Y-m-d') : '') }}"
-                            required
+                            value="{{ old('tanggal_lahir', optional($user?->tanggal_lahir)->format('Y-m-d')) }}" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
                     </div>
 
@@ -200,16 +199,17 @@
                         <select name="tingkatan" id="tingkatan" required
                             class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 transition duration-200">
                             <option value="">Pilih Tingkatan</option>
-                            <option value="SD"
-                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SD' ? 'selected' : '' }}>SD / MI</option>
-                            <option value="SMP"
-                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SMP' ? 'selected' : '' }}>SMP / MTs
+                            <option value="MI"
+                                {{ old('tingkatan', $user->tingkatan ?? '') == 'MI' ? 'selected' : '' }}>MI</option>
+                            <option value="SMP/MTs"
+                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SMP/MTs' ? 'selected' : '' }}>SMP / MTs
                             </option>
-                            <option value="SMA"
-                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SMA' ? 'selected' : '' }}>SMA / MA
+                            <option value="SMK/MA"
+                                {{ old('tingkatan', $user->tingkatan ?? '') == 'SMK/MA' ? 'selected' : '' }}>SMK / MA
                             </option>
-                            <option value="KULIAH"
-                                {{ old('tingkatan', $user->tingkatan ?? '') == 'KULIAH' ? 'selected' : '' }}>Perguruan
+                            <option value="Perguruan Tinggi"
+                                {{ old('tingkatan', $user->tingkatan ?? '') == 'Perguruan Tinggi' ? 'selected' : '' }}>
+                                Perguruan
                                 Tinggi</option>
                         </select>
                     </div>
@@ -314,15 +314,14 @@
             }
 
             const kelasOptionsByTingkatan = {
-                SD: [
-                    '1 SD/MI', '2 SD/MI', '3 SD/MI',
-                    '4 SD/MI', '5 SD/MI', '6 SD/MI'
+                MI: [
+                    '1 MI', '2 MI', '3 MI',
+                    '4 MI', '5 MI', '6 MI'
                 ],
-                SMP: ['1 SMP/MTs', '2 SMP/MTs', '3 SMP/MTs'],
-                SMA: ['1 SMA/MA', '2 SMA/MA', '3 SMA/MA'],
-                KULIAH: [
-                    'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4',
-                    'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'
+                'SMP/MTs': ['1 SMP/MTs', '2 SMP/MTs', '3 SMP/MTs'],
+                'SMK/MA': ['1 SMK/MA', '2 SMK/MA', '3 SMK/MA'],
+                'Perguruan Tinggi': [
+                    'Semester 1 dan 2', 'Semester 3 dan 4', 'Semester 5 dan 6', 'Semester 7 dan 8'
                 ],
             };
 

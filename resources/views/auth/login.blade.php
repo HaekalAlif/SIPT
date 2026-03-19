@@ -24,12 +24,7 @@
                     Kec. Sekampung, Kabupaten Lampung Timur, Lampung 34382
                 </p>
             </div>
-            <div class="flex gap-7">
-                <!-- Social Icons -->
-                <a href="#" class="text-white text-2xl"><i class="fab fa-tiktok"></i></a>
-                <a href="#" class="text-white text-2xl"><i class="fab fa-facebook"></i></a>
-                <a href="#" class="text-white text-2xl"><i class="fab fa-instagram"></i></a>
-            </div>
+
         </div>
         <!-- Main Content -->
         <div class="flex flex-1 h-full">

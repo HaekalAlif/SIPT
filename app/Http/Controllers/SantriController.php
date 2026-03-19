@@ -11,6 +11,7 @@ use App\Models\Tagihan;
 use App\Models\TagihanDetail;
 use App\Models\Pembayaran;
 use App\Models\JenisTagihanDisabled;
+use App\Models\MetodePembayaran;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -371,6 +372,7 @@ class SantriController extends Controller
     public function tagihanPembayaran(Request $request)
     {
         $user = Auth::user();
+        $metodePembayaranList = MetodePembayaran::active()->ordered()->get();
 
         // Get all tahun ajaran for selector
         $tahunAjaranList = TahunAjaran::orderBy('created_at', 'desc')->get();
@@ -396,6 +398,7 @@ class SantriController extends Controller
                 'belumBayar'          => 0,
                 'menungguVerifikasi'  => 0,
                 'lunas'               => 0,
+                'metodePembayaranList' => $metodePembayaranList,
             ]);
         }
 
@@ -448,7 +451,8 @@ class SantriController extends Controller
             'totalTagihan',
             'belumBayar',
             'menungguVerifikasi',
-            'lunas'
+            'lunas',
+            'metodePembayaranList'
         ));
     }
 

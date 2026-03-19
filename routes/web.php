@@ -116,6 +116,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // Settings
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+    Route::get('/settings/metode-pembayaran', [AdminController::class, 'metodePembayaran'])->name('settings.metode-pembayaran');
+    Route::post('/settings/metode-pembayaran', [AdminController::class, 'storeMetodePembayaran'])->name('settings.metode-pembayaran.store');
+    Route::put('/settings/metode-pembayaran/{id}', [AdminController::class, 'updateMetodePembayaran'])->name('settings.metode-pembayaran.update');
+    Route::delete('/settings/metode-pembayaran/{id}', [AdminController::class, 'destroyMetodePembayaran'])->name('settings.metode-pembayaran.destroy');
 });
 
 require __DIR__.'/auth.php';

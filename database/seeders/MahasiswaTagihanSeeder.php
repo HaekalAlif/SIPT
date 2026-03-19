@@ -22,7 +22,7 @@ class MahasiswaTagihanSeeder extends Seeder
                 'nominal' => 250000,
                 'is_bulanan' => true,
                 'target_scope' => JenisTagihan::TARGET_SCOPE_TINGKATAN,
-                'target_value' => 'KULIAH',
+                'target_value' => 'Perguruan Tinggi',
             ]
         );
     }

@@ -10,11 +10,13 @@ use App\Models\KartuPembayaran;
 use App\Models\Tagihan;
 use App\Models\TagihanDetail;
 use App\Models\Pembayaran;
+use App\Models\MetodePembayaran;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -126,7 +128,7 @@ class AdminController extends Controller
             'tanggal_lahir' => 'required_if:role,santri|date',
             'jenis_kelamin' => 'required_if:role,santri|in:L,P',
             'alamat' => 'required_if:role,santri|string',
-            'tingkatan' => 'required_if:role,santri|in:SD,SMP,SMA,KULIAH',
+            'tingkatan' => 'required_if:role,santri|in:MI,SMP/MTs,SMK/MA,Perguruan Tinggi',
             'kelas' => 'required_if:role,santri|string|max:50',
             'tingkatan_ngaji' => 'required_if:role,santri|string|max:100',
         ]);
@@ -181,7 +183,7 @@ class AdminController extends Controller
             'jenis_kelamin' => 'required_if:role,santri|in:L,P',
             'alamat' => 'required_if:role,santri|string',
             'no_telp' => 'required_if:role,santri|string|max:15',
-            'tingkatan' => 'required_if:role,santri|in:SD,SMP,SMA,KULIAH',
+            'tingkatan' => 'required_if:role,santri|in:MI,SMP/MTs,SMK/MA,Perguruan Tinggi',
             'kelas' => 'required_if:role,santri|string|max:50',
             'tingkatan_ngaji' => 'required_if:role,santri|string|max:100',
         ]);
@@ -309,7 +311,7 @@ class AdminController extends Controller
     {
         $jenisTagihan = JenisTagihan::with('kategori')->orderBy('created_at', 'desc')->paginate(10);
         $kategoriTagihan = KategoriTagihan::all();
-        $tingkatanOptions = ['SD', 'SMP', 'SMA', 'KULIAH'];
+        $tingkatanOptions = ['MI', 'SMP/MTs', 'SMK/MA', 'Perguruan Tinggi'];
         $tingkatanNgajiOptions = [
             'I Tsanawiyyah',
             'II Tsanawiyyah',
@@ -795,7 +797,90 @@ class AdminController extends Controller
 
     // === Settings ===
     public function settings() {
-        return view('admin.settings');
+        return redirect()->route('admin.settings.metode-pembayaran');
+    }
+
+    public function metodePembayaran()
+    {
+        $metodePembayaran = MetodePembayaran::ordered()->paginate(10);
+
+        return view('admin.settings.metode-pembayaran', compact('metodePembayaran'));
+    }
+
+    public function storeMetodePembayaran(Request $request)
+    {
+        $validated = $request->validate([
+            'nama_metode' => 'required|string|max:100',
+            'nama_bank' => 'nullable|string|max:100',
+            'nomor_rekening' => 'nullable|string|max:80',
+            'atas_nama' => 'nullable|string|max:150',
+            'logo_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'keterangan' => 'nullable|string',
+            'urutan' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $validated['is_active'] = (bool) ($validated['is_active'] ?? false);
+        $validated['urutan'] = (int) ($validated['urutan'] ?? 0);
+
+        if ($request->hasFile('logo_file')) {
+            $validated['logo_path'] = $request->file('logo_file')->store('metode-pembayaran', 'public');
+        }
+
+        unset($validated['logo_file']);
+
+        MetodePembayaran::create($validated);
+
+        return redirect()->route('admin.settings.metode-pembayaran')
+            ->with('success', 'Metode pembayaran berhasil ditambahkan.');
+    }
+
+    public function updateMetodePembayaran(Request $request, $id)
+    {
+        $metode = MetodePembayaran::findOrFail($id);
+
+        $validated = $request->validate([
+            'nama_metode' => 'required|string|max:100',
+            'nama_bank' => 'nullable|string|max:100',
+            'nomor_rekening' => 'nullable|string|max:80',
+            'atas_nama' => 'nullable|string|max:150',
+            'logo_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'keterangan' => 'nullable|string',
+            'urutan' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $validated['is_active'] = (bool) ($validated['is_active'] ?? false);
+        $validated['urutan'] = (int) ($validated['urutan'] ?? 0);
+
+        if ($request->hasFile('logo_file')) {
+            if ($metode->logo_path && Storage::disk('public')->exists($metode->logo_path)) {
+                Storage::disk('public')->delete($metode->logo_path);
+            }
+
+            $validated['logo_path'] = $request->file('logo_file')->store('metode-pembayaran', 'public');
+        }
+
+        unset($validated['logo_file']);
+
+        $metode->update($validated);
+
+        return redirect()->route('admin.settings.metode-pembayaran')
+            ->with('success', 'Metode pembayaran berhasil diperbarui.');
+    }
+
+    public function destroyMetodePembayaran($id)
+    {
+        $metode = MetodePembayaran::findOrFail($id);
+
+        if ($metode->logo_path && Storage::disk('public')->exists($metode->logo_path)) {
+            Storage::disk('public')->delete($metode->logo_path);
+        }
+
+        $metode->delete();
+
+        return redirect()->route('admin.settings.metode-pembayaran')
+            ->with('success', 'Metode pembayaran berhasil dihapus.');
     }
 
     private function normalizeStatus(?string $status): string
