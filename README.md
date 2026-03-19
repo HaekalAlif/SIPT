@@ -1,59 +1,185 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SiPayPesantren
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Panduan ini dibuat untuk pengguna non-teknis agar bisa menjalankan aplikasi SiPayPesantren di laptop lokal dengan mudah.
 
-## About Laravel
+## 1. Kebutuhan Awal
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Sebelum mulai, pastikan laptop sudah terpasang:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. Git
+2. PHP versi 8.2 atau lebih baru
+3. Composer
+4. Node.js (disarankan versi 18 ke atas) dan npm
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Jika salah satu belum ada, minta tim IT membantu instalasi terlebih dahulu.
 
-## Learning Laravel
+## 2. Ambil Project dari GitHub (Clone)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Repository resmi:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- https://github.com/HaekalAlif/SIPT.git
 
-## Laravel Sponsors
+Langkah:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+1. Buka Command Prompt (CMD).
+2. Pindah ke folder tempat project akan disimpan.
+3. Jalankan perintah berikut:
 
-### Premium Partners
+```bash
+git clone https://github.com/HaekalAlif/SIPT.git
+cd SIPT
+git checkout main
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Catatan:
 
-## Contributing
+- Branch utama project adalah `main`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 3. Instalasi Aplikasi (Pertama Kali)
 
-## Code of Conduct
+Jalankan perintah di bawah ini satu per satu dari folder project `SIPT`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Langkah 1: Install library backend
 
-## Security Vulnerabilities
+```bash
+composer install
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Langkah 2: Buat file konfigurasi environment
 
-## License
+Jika memakai CMD Windows:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```cmd
+copy .env.example .env
+```
+
+Jika memakai PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+### Langkah 3: Generate app key
+
+```bash
+php artisan key:generate
+```
+
+### Langkah 4: Isi konfigurasi DB di file .env
+
+Di tahap ini, cukup atur koneksi database di file .env.
+
+Jika memakai MySQL, isi seperti ini:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=sipt
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### Langkah 5: Migrasi (membuat struktur database otomatis)
+
+Setelah .env diisi, jalankan:
+
+```bash
+php artisan migrate --seed
+```
+
+Perintah ini akan:
+
+1. Membuat semua tabel aplikasi (melalui migration).
+2. Mengisi data awal (melalui seeder).
+
+### Langkah 6: Install library frontend
+
+```bash
+npm install
+```
+
+### Langkah 7: Aktifkan link storage (wajib untuk gambar upload)
+
+```bash
+php artisan storage:link
+```
+
+## 4. Menjalankan Aplikasi
+
+Gunakan cara paling mudah berikut:
+
+```bash
+composer dev
+```
+
+Setelah itu buka browser:
+
+- http://localhost:8000
+
+## 5. Cara Login (Data Awal)
+
+Password default semua akun seed:
+
+- password
+
+Contoh akun admin:
+
+- admin@example.com
+
+## 6. Cara Update Jika Ada Perubahan dari Tim Developer
+
+Jika developer memberi update terbaru, lakukan langkah ini:
+
+1. Pastikan aplikasi sedang tidak berjalan (stop terminal dengan `Ctrl + C`).
+2. Buka terminal di folder project `SIPT`.
+3. Jalankan perintah berikut:
+
+```bash
+git checkout main
+git pull origin main
+composer install
+npm install
+php artisan migrate
+php artisan optimize:clear
+```
+
+4. Jalankan kembali aplikasi:
+
+```bash
+composer dev
+```
+
+## 7. Troubleshooting Sederhana
+
+### Aplikasi tidak bisa dibuka
+
+1. Pastikan `composer dev` masih berjalan.
+2. Coba akses http://localhost:8000 kembali.
+
+### Gambar/logo upload tidak tampil
+
+Jalankan ulang:
+
+```bash
+php artisan storage:link
+```
+
+### Port 8000 dipakai aplikasi lain
+
+Jalankan server di port lain:
+
+```bash
+php artisan serve --port=8080
+```
+
+Lalu buka:
+
+- http://localhost:8080
+
+## 8. Kontak Bantuan
+
+Jika ada kendala, hubungi PIC project:
+
+1. Nama: M. Haekal Alif Putra
+2. WhatsApp: 087817555827
