@@ -190,6 +190,20 @@ class SantriController extends Controller
                 ->with('error', 'Tidak ada tahun ajaran aktif.');
         }
 
+        $tahunAjaranList = TahunAjaran::when($user->tahun_ajaran_masuk_id, function ($q) use ($user) {
+                $q->where('id', '>=', $user->tahun_ajaran_masuk_id);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $selectedTahunAjaran = null;
+        if ($request->filled('tahun_ajaran_id')) {
+            $selectedTahunAjaran = $tahunAjaranList->firstWhere('id', (int) $request->tahun_ajaran_id);
+        }
+        if (!$selectedTahunAjaran) {
+            $selectedTahunAjaran = $tahunAjaranAktif;
+        }
+
         $kategoriInput = strtolower($request->get('kategori', 'registrasi'));
 
         $kategori = KategoriTagihan::with([
@@ -206,14 +220,15 @@ class SantriController extends Controller
         /** @var \App\Models\KategoriTagihan $kategori */
 
         $kartuPembayaran = KartuPembayaran::firstOrCreate(
-            ['user_id' => $user->id, 'tahun_ajaran_id' => $tahunAjaranAktif->id],
-            ['nomor_kartu' => 'KP-' . str_replace('/', '', $tahunAjaranAktif->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)]
+            ['user_id' => $user->id, 'tahun_ajaran_id' => $selectedTahunAjaran->id],
+            ['nomor_kartu' => 'KP-' . str_replace('/', '', $selectedTahunAjaran->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)]
         );
 
         $isRegistrasi = str_contains(strtolower($kategori->nama), 'registrasi');
 
-        // Cari detail yang sudah dibayar (ada di TagihanDetail yang sudah pernah dibuat)
-        $paidQuery = TagihanDetail::whereHas('jenisTagihan', fn($q) => $q->where('kategori_id', $kategori->id));
+        // Cari detail yang sudah dibayar (status lunas saja)
+        $paidQuery = TagihanDetail::whereHas('jenisTagihan', fn($q) => $q->where('kategori_id', $kategori->id))
+            ->where('status', TagihanDetail::STATUS_LUNAS);
 
         if ($isRegistrasi) {
             // Registrasi: cek seluruh history user
@@ -232,8 +247,8 @@ class SantriController extends Controller
             }
         }
 
-        // Jenis tagihan yang dinonaktifkan admin untuk santri ini + tahun ajaran aktif
-        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($tahunAjaranAktif->id, $user->id);
+        // Jenis tagihan yang dinonaktifkan admin untuk santri ini + tahun ajaran terpilih
+        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($selectedTahunAjaran->id, $user->id);
 
         // Filter jenisTagihan di kategori agar yang disabled tidak tampil,
         // lalu pilih item paling relevan jika ada versi general + versi khusus.
@@ -246,8 +261,16 @@ class SantriController extends Controller
         $kategoriNama = $kategoriInput;
 
         return view('santri.buat-tagihan', compact(
-            'user', 'tahunAjaranAktif', 'kategori', 'kategoriNama',
-            'kartuPembayaran', 'paidJenisIds', 'paidBulanMap', 'disabledJenisIds'
+            'user',
+            'tahunAjaranAktif',
+            'tahunAjaranList',
+            'selectedTahunAjaran',
+            'kategori',
+            'kategoriNama',
+            'kartuPembayaran',
+            'paidJenisIds',
+            'paidBulanMap',
+            'disabledJenisIds'
         ));
     }
 
@@ -260,13 +283,27 @@ class SantriController extends Controller
             return back()->with('error', 'Tidak ada tahun ajaran aktif.');
         }
 
+        $tahunAjaranList = TahunAjaran::when($user->tahun_ajaran_masuk_id, function ($q) use ($user) {
+                $q->where('id', '>=', $user->tahun_ajaran_masuk_id);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $selectedTahunAjaran = null;
+        if ($request->filled('tahun_ajaran_id')) {
+            $selectedTahunAjaran = $tahunAjaranList->firstWhere('id', (int) $request->tahun_ajaran_id);
+        }
+        if (!$selectedTahunAjaran) {
+            $selectedTahunAjaran = $tahunAjaranAktif;
+        }
+
         $kartu = KartuPembayaran::firstOrCreate(
-            ['user_id' => $user->id, 'tahun_ajaran_id' => $tahunAjaranAktif->id],
-            ['nomor_kartu' => 'KP-' . str_replace('/', '', $tahunAjaranAktif->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)]
+            ['user_id' => $user->id, 'tahun_ajaran_id' => $selectedTahunAjaran->id],
+            ['nomor_kartu' => 'KP-' . str_replace('/', '', $selectedTahunAjaran->nama) . '-' . str_pad($user->id, 4, '0', STR_PAD_LEFT)]
         );
 
         // Ambil jenis tagihan yang dinonaktifkan admin untuk santri ini
-        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($tahunAjaranAktif->id, $user->id);
+        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($selectedTahunAjaran->id, $user->id);
         $allowedJenisIds = JenisTagihan::applicableForUser($user)
             ->pluck('id')
             ->map(fn($id) => (int) $id)
@@ -395,11 +432,42 @@ class SantriController extends Controller
                 'selectedTagihan'     => null,
                 'filterKategori'      => null,
                 'totalTagihan'        => 0,
+                'totalTagihanNominal' => 0,
                 'belumBayar'          => 0,
                 'menungguVerifikasi'  => 0,
                 'lunas'               => 0,
                 'metodePembayaranList' => $metodePembayaranList,
             ]);
+        }
+
+        $totalTagihanNominal = 0;
+        $disabledJenisIds = JenisTagihanDisabled::getDisabledIds($selectedTahunAjaran->id, $user->id);
+        $jenisTagihans = JenisTagihan::with('kategori')
+            ->applicableForUser($user)
+            ->when(!empty($disabledJenisIds), fn($q) => $q->whereNotIn('id', $disabledJenisIds))
+            ->get();
+
+        foreach ($jenisTagihans as $jenis) {
+            $katNama = strtolower($jenis->kategori->nama ?? '');
+            $isRegistrasi = str_contains($katNama, 'registrasi');
+            $isSyariah = str_contains($katNama, 'syariah');
+
+            if ($isRegistrasi) {
+                $exists = TagihanDetail::whereHas('tagihan.kartuPembayaran', fn($q) => $q->where('user_id', $user->id))
+                    ->where('jenis_tagihan_id', $jenis->id)
+                    ->exists();
+                if ($exists) {
+                    continue;
+                }
+                $totalTagihanNominal += (float) $jenis->nominal;
+                continue;
+            }
+
+            if ($isSyariah && $jenis->is_bulanan) {
+                $totalTagihanNominal += (float) $jenis->nominal * 12;
+            } else {
+                $totalTagihanNominal += (float) $jenis->nominal;
+            }
         }
 
         // Get kartu pembayaran for selected tahun ajaran
@@ -449,6 +517,7 @@ class SantriController extends Controller
             'selectedTagihan',
             'filterKategori',
             'totalTagihan',
+            'totalTagihanNominal',
             'belumBayar',
             'menungguVerifikasi',
             'lunas',

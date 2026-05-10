@@ -17,14 +17,20 @@
 
         <!-- Filter Data Pembayaran Santri -->
         <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
                 <h2 class="text-lg font-semibold">Filter Data Pembayaran Santri</h2>
-                <div class="flex gap-2 items-center">
+                <form method="GET" class="flex gap-2 items-center">
                     <span class="text-gray-600">Tahun</span>
-                    <select class="border border-gray-300 rounded px-3 py-1 text-sm bg-gray-100" disabled>
-                        <option>{{ $tahunAjaranAktif->nama ?? '2025/2026' }}</option>
+                    <select name="tahun_ajaran_id" class="border border-gray-300 rounded px-3 py-1 text-sm bg-gray-100"
+                        onchange="this.form.submit()">
+                        @foreach ($tahunAjaranList as $tahun)
+                            <option value="{{ $tahun->id }}" @selected($selectedTahunAjaran && $selectedTahunAjaran->id === $tahun->id)>
+                                {{ $tahun->nama }}
+                            </option>
+                        @endforeach
                     </select>
-                </div>
+                    <input type="hidden" name="kategori" value="{{ $kategoriNama }}">
+                </form>
             </div>
         </div>
 
@@ -77,6 +83,7 @@
 
             <form action="{{ route('santri.store-tagihan') }}" method="POST" class="p-6">
                 @csrf
+                <input type="hidden" name="tahun_ajaran_id" value="{{ $selectedTahunAjaran?->id }}">
 
                 <div class="overflow-x-auto">
                     <table class="w-full">

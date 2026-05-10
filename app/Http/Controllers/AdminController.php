@@ -213,11 +213,6 @@ class AdminController extends Controller
         $user->refresh();
 
         $message = 'User berhasil diperbarui';
-        if ($user->role === User::ROLE_SANTRI && $this->isSantriProfileComplete($user)) {
-            $result = $this->generateTagihanForSantri($user);
-            $message .= '. Auto-generate tagihan: ' . $result['created_tagihan'] . ' tagihan baru, ' .
-                $result['created_details'] . ' detail dibuat.';
-        }
 
         return redirect()->route('admin.users')->with('success', $message);
     }
@@ -240,15 +235,18 @@ class AdminController extends Controller
     {
         $request->validate([
             'nama' => 'required|string|unique:tahun_ajaran,nama',
-            'is_active' => 'boolean'
+            'is_active' => 'nullable|boolean'
         ]);
 
-        if ($request->is_active) {
+        $data = $request->all();
+        $data['is_active'] = $request->has('is_active');
+
+        if ($data['is_active']) {
             // Deactivate other active years
             TahunAjaran::where('is_active', true)->update(['is_active' => false]);
         }
 
-        TahunAjaran::create($request->all());
+        TahunAjaran::create($data);
 
         return redirect()->back()->with('success', 'Tahun ajaran berhasil ditambahkan');
     }
@@ -259,15 +257,18 @@ class AdminController extends Controller
         
         $request->validate([
             'nama' => 'required|string|unique:tahun_ajaran,nama,' . $id,
-            'is_active' => 'boolean'
+            'is_active' => 'nullable|boolean'
         ]);
 
-        if ($request->is_active) {
+        $data = $request->all();
+        $data['is_active'] = $request->has('is_active');
+
+        if ($data['is_active']) {
             // Deactivate other active years
             TahunAjaran::where('id', '!=', $id)->update(['is_active' => false]);
         }
 
-        $tahunAjaran->update($request->all());
+        $tahunAjaran->update($data);
 
         return redirect()->back()->with('success', 'Tahun ajaran berhasil diperbarui');
     }

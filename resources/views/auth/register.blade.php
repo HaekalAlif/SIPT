@@ -36,7 +36,7 @@
         </div>
         <!-- Main Content -->
         <div class="relative flex-1 flex items-center justify-center"
-            style="background: url('/images/image.png') center center / cover no-repeat;">
+            style="background: url('/images/home.png') center center / cover no-repeat;">
             <div class="absolute inset-0 bg-black bg-opacity-40"></div>
             <div class="relative z-10 w-full flex items-center justify-center py-16">
                 <div class="bg-white bg-opacity-90 rounded-lg shadow-lg max-w-md w-full px-8 py-8">

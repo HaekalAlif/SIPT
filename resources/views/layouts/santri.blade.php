@@ -15,37 +15,42 @@
         {{-- Header Hijau Full Width --}}
         <header class="bg-green-700 flex items-center justify-between px-6 py-3 w-full flex-shrink-0">
             <div class="flex items-center gap-3">
+                {{-- TOMBOL HAMBURGER --}}
+                <button id="btn-hamburger-santri" class="text-white block focus:outline-none mr-2">
+                    <i class="fa fa-bars text-xl"></i>
+                </button>
+
                 <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
                     <i class="fa fa-mosque text-green-700 text-sm"></i>
                 </div>
-                <span class="text-white font-bold text-lg">SiPayPesantren</span>
+                <span class="text-white font-bold text-lg hidden md:inline">SiPayPesantren</span>
+                <span class="text-white font-bold text-lg inline md:hidden">SiPay</span>
             </div>
             <div class="flex items-center gap-4">
-                <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
-                    <i class="fa fa-bell text-green-700"></i>
-                </div>
-                <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
-                    <i class="fa fa-user text-green-700"></i>
-                </div>
-                <span class="text-white font-semibold">{{ Auth::check() ? Auth::user()->nama_santri : 'USER' }}</span>
+                {{-- Ikon lonceng telah dihapus dari sini --}}
+                @if (Auth::check() && Auth::user()->foto_profile)
+                    <img src="{{ Storage::url(Auth::user()->foto_profile) }}" alt="Foto Profil"
+                        class="w-8 h-8 rounded-full object-cover">
+                @else
+                    <div class="bg-white rounded-full w-8 h-8 flex items-center justify-center">
+                        <i class="fa fa-user text-green-700"></i>
+                    </div>
+                @endif
+                <span
+                    class="text-white font-semibold hidden sm:inline">{{ Auth::check() ? Auth::user()->nama_santri : 'USER' }}</span>
             </div>
         </header>
 
         {{-- Container untuk Sidebar + Content --}}
-        <div class="flex flex-1 overflow-hidden">
-            {{-- Sidebar --}}
-            @include('components.sidebar-santri')
+        <div class="flex flex-1 overflow-hidden relative">
+            <aside id="sidebar-santri-asli"
+                class="w-64 bg-white border-r flex-shrink-0 transition-all duration-300 z-50 absolute md:relative h-full">
+                @include('components.sidebar-santri')
+            </aside>
 
             {{-- Main Content Area --}}
             <div class="flex-1 flex flex-col overflow-hidden">
-                {{-- Breadcrumb Bar --}}
-                <div class="bg-white border-b px-6 py-3 flex items-center gap-2 flex-shrink-0">
-                    <i class="fa fa-bars text-gray-600"></i>
-                    <i class="fa fa-home text-gray-600"></i>
-                    <span class="text-gray-600">Home</span>
-                    <i class="fa fa-chevron-right text-gray-400 text-xs"></i>
-                    <span class="font-semibold text-gray-800">Dashboard</span>
-                </div>
+                {{-- BAGIAN HOME DASHBOARD SUDAH DIHAPUS DARI SINI --}}
 
                 {{-- Content --}}
                 <div class="flex-1 overflow-y-auto p-6 bg-gray-100">
@@ -53,21 +58,34 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const submenuToggle = document.getElementById('submenu-toggle');
-                const submenuContent = document.getElementById('submenu-content');
-                const chevronIcon = document.getElementById('chevron-icon');
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const submenuToggle = document.getElementById('submenu-toggle');
+            const submenuContent = document.getElementById('submenu-content');
+            const chevronIcon = document.getElementById('chevron-icon');
 
+            if (submenuToggle) {
                 submenuToggle.addEventListener('click', function() {
                     submenuContent.classList.toggle('hidden');
                     chevronIcon.classList.toggle('fa-chevron-down');
                     chevronIcon.classList.toggle('fa-chevron-up');
                 });
+            }
+
+            const btnHam = document.getElementById('btn-hamburger-santri');
+            const sidebar = document.getElementById('sidebar-santri-asli');
+
+            btnHam.addEventListener('click', function() {
+                sidebar.classList.toggle('hidden');
+                if (!sidebar.classList.contains('hidden') && window.innerWidth < 768) {
+                    sidebar.classList.add('shadow-2xl');
+                }
             });
-        </script>
-        @stack('scripts')
+        });
+    </script>
+    @stack('scripts')
 </body>
 
 </html>

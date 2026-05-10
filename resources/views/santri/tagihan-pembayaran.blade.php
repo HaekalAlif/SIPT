@@ -368,6 +368,12 @@
                     <div class="bg-white rounded-lg shadow p-8">
                         <!-- Statistics -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                            <div class="bg-purple-50 rounded-lg p-4">
+                                <div class="text-sm text-purple-600 mb-2">Total Nominal</div>
+                                <div class="text-xl font-bold text-purple-800">
+                                    Rp{{ number_format($totalTagihanNominal ?? 0, 0, ',', '.') }}
+                                </div>
+                            </div>
                             <div class="bg-blue-50 rounded-lg p-4">
                                 <div class="text-sm text-blue-600 mb-2">Total Tagihan</div>
                                 <div class="text-xl font-bold text-blue-800">{{ $totalTagihan }}</div>
